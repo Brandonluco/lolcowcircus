@@ -19,7 +19,7 @@ body {
    2. HEADER & NAVIGATION
    ========================================================================== */
 .site-header {
-    background-color: #ffffff;
+    background-color: transparent;
     border-bottom: 1px solid #eaeaea;
     position: fixed;
     top: 0;
@@ -30,17 +30,29 @@ body {
     align-items: center;
     padding: 0 40px;
     height: 60px;
+    background-image: url(cowtubebanner.png);
+    background-size: cover;
+background-position: center;
+background-repeat: repeat;
 }
 
 .logo {
     font-weight: 700;
     font-size: 1.2rem;
     letter-spacing: -0.5px;
+    background-color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 8px 12px;
 }
 
 .main-nav ul {
-    display: flex;
+       display: flex;
     list-style: none;
+    background-color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 8px 12px;
 }
 
 .main-nav a {
@@ -194,4 +206,44 @@ body {
     margin-top: 6px;
     font-size: 14px;
     color: darkslategray;
+}
+
+.status-banner {
+    overflow: hidden;
+    white-space: nowrap;
+    background-color: #adadad;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+}
+
+.status-banner:active {
+    cursor: grabbing;
+}
+
+.status-track {
+    display: inline-block;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.status-banner:hover .status-track {
+    animation-play-state: paused;
+}
+
+
+
+
+
+
+/*@keyframes ticker {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(-100%);
+    }
 }

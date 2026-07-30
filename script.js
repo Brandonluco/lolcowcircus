@@ -46,12 +46,11 @@ const timestamp = now.toLocaleDateString("en-US", {
     const newMessage = document.createElement("div");
 newMessage.classList.add("message");
 newMessage.innerHTML = `<strong style="color:${guestColor}">${guestName}:</strong> ${message} <span class="timestamp">${timestamp}</span>`;
-chatMessages.appendChild(newMessage);
 
 const wasAtBottom = 
     chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
 
-chatMessages.appendChild(newMessage);
+    chatMessages.appendChild(newMessage);
 
 if (wasAtBottom) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -87,9 +86,61 @@ newMessageAlert.addEventListener("click", function () {
     newMessageAlert.style.display = "none";
 });
 chatMessages.addEventListener("scroll", function () {
-    const isAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
+    
 
     if (isAtBottom) {
         newMessageAlert.style.display = "none";
     }
 });
+
+// =================
+// STATUS BANNER
+// =================
+
+const statusBanner = document.querySelector(".status-banner");
+const statusTrack = document.querySelector(".status-track");
+
+let isDragging = false;
+let startX;
+let scrollLeft;
+
+statusBanner.addEventListener("mousedown", (event) => {
+    isDragging = true;
+    statusBanner.classList.add("dragging");
+
+    startX = event.pageX;
+    scrollLeft = statusBanner.scrollLeft;
+});
+
+statusBanner.addEventListener("mouseleave", () => {
+    isDragging = false;
+});
+
+statusBanner.addEventListener("mouseup", () => {
+    isDragging = false;
+});
+
+statusBanner.addEventListener("mousemove", (event) => {
+    if (!isDragging) return;
+
+    event.preventDefault();
+
+    const distance = event.pageX - startX;
+    statusBanner.scrollLeft = scrollLeft - distance;
+});
+
+let autoScrollSpeed = 1;
+
+function moveStatusBanner() {
+    if (!isDragging) {
+        statusBanner.scrollLeft += autoScrollSpeed;
+
+        if (statusBanner.scrollLeft >= statusTrack.scrollWidth - statusBanner.clientWidth) {
+   statusBanner.scrollLeft -= statusTrack.scrollWidth / 2;
+}
+    }
+
+    requestAnimationFrame(moveStatusBanner);
+}
+
+moveStatusBanner();
