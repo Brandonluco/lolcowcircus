@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+<h1>CowTube Admin Panel</h1>
+
+<section>
+    <h2>Streamer Manager</h2>
+
+    <label>
+        Select Streamer:
+        <select id="streamerSelect"></select>
+    </label>
+
+    <br><br>
+
+    <button id="onlineButton">🟢 Online</button>
+    <button id="awayButton">🟡 Away</button>
+    <button id="offlineButton">⚫ Offline</button>
+
+</section>
+
+
+<section>
+    <h2>Add New Streamer</h2>
+
+    <input type="text" id="streamerName" placeholder="Streamer name">
+
+    <select id="streamerStatus">
+        <option value="online">🟢 Online</option>
+        <option value="away">🟡 Away</option>
+        <option value="offline">⚫ Offline</option>
+    </select>
+
+    <button id="addStreamer">
+        Add Streamer
+    </button>
+
+</section>
+
+
+<section>
+    <h2>Current Streamers</h2>
+
+    <div id="streamerList"></div>
+
+</section>
+
+
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+</body>
+</html>

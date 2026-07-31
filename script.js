@@ -9,6 +9,10 @@ document.addEventListener('keydown', e => {
         }
     }
 });
+
+
+
+
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
@@ -88,7 +92,7 @@ newMessageAlert.addEventListener("click", function () {
 chatMessages.addEventListener("scroll", function () {
     
 
-    if (isAtBottom) {
+    if (chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50) {
         newMessageAlert.style.display = "none";
     }
 });
@@ -144,3 +148,35 @@ function moveStatusBanner() {
 }
 
 moveStatusBanner();
+
+
+function loadStatusBanner() {
+
+    statusTrack.innerHTML = "";
+
+   const updatedStreamers = getStreamers();
+
+    updatedStreamers.forEach((streamer) => {
+
+        const item = document.createElement("span");
+
+        let dot = "⚫";
+
+        if (streamer.status === "online") {
+            dot = "🟢";
+        }
+
+        if (streamer.status === "away") {
+            dot = "🟡";
+        }
+
+        item.textContent =
+            `${dot} ${streamer.name} • ${streamer.platform} • ${streamer.channel}   `;
+
+        statusTrack.appendChild(item);
+
+    });
+
+}
+
+loadStatusBanner();
