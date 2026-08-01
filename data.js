@@ -24,3 +24,20 @@ function saveStreamers(streamerData) {
     );
 
 }
+
+
+function getAlert() {
+
+   return JSON.parse(localStorage.getItem("alert"));
+
+}
+
+
+function saveAlert(alertData) {
+
+    localStorage.setItem(
+        "alert",
+        JSON.stringify(alertData)
+    );
+
+}

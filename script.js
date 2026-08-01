@@ -154,29 +154,61 @@ function loadStatusBanner() {
 
     statusTrack.innerHTML = "";
 
-   const updatedStreamers = getStreamers();
+    const updatedStreamers = getStreamers();
 
-    updatedStreamers.forEach((streamer) => {
+    for (let i = 0; i < 3; i++) {
 
-        const item = document.createElement("span");
+        updatedStreamers.forEach((streamer) => {
 
-        let dot = "⚫";
+            const item = document.createElement("span");
 
-        if (streamer.status === "online") {
-            dot = "🟢";
-        }
+            let dot = "⚫";
 
-        if (streamer.status === "away") {
-            dot = "🟡";
-        }
+            if (streamer.status === "online") {
+                dot = "🟢";
+            }
 
-        item.textContent =
-            `${dot} ${streamer.name} • ${streamer.platform} • ${streamer.channel}   `;
+            if (streamer.status === "away") {
+                dot = "🟡";
+            }
 
-        statusTrack.appendChild(item);
+            item.textContent =
+                `${dot} ${streamer.name} • ${streamer.platform} • ${streamer.channel}   `;
 
-    });
+            statusTrack.appendChild(item);
+
+        });
+
+    }
 
 }
 
 loadStatusBanner();
+
+function loadAlert() {
+
+    const alert = getAlert();
+
+    const alertBox = document.getElementById("alertBox");
+
+    if (!alert) {
+    alertBox.style.display = "none";
+    return;
+}
+
+alertBox.style.display = "block";
+
+    alertBox.textContent = alert.message;
+
+    if (alert.type === "news") {
+        alertBox.style.backgroundColor = "#2ecc71";
+    }
+
+    if (alert.type === "maintenance") {
+        alertBox.style.backgroundColor = "#e74c3c";
+    }
+
+}
+
+
+loadAlert();

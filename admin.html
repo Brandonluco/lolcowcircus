@@ -31,6 +31,10 @@
 
     <input type="text" id="streamerName" placeholder="Streamer name">
 
+    <input type="text" id="streamerPlatform" placeholder="Platform">
+
+    <input type="text" id="streamerChannel" placeholder="Channel / Handle">
+
     <select id="streamerStatus">
         <option value="online">🟢 Online</option>
         <option value="away">🟡 Away</option>
@@ -40,6 +44,31 @@
     <button id="addStreamer">
         Add Streamer
     </button>
+
+</section>
+
+<section>
+    <h2>Alert Manager</h2>
+
+
+    <div id="currentAlert">
+    No active alert
+    </div>
+
+    <input type="text" id="alertMessage" placeholder="Alert message">
+
+    <select id="alertType">
+        <option value="news">🟢 News</option>
+        <option value="maintenance">🔴 Maintenance</option>
+    </select>
+
+    <button id="updateAlert">
+        Update Alert
+    </button>
+
+    <button id="clearAlert">
+    Clear Alert
+</button>
 
 </section>
 
