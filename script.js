@@ -212,3 +212,16 @@ alertBox.style.display = "block";
 
 
 loadAlert();
+
+
+const header = document.querySelector(".site-header");
+
+window.addEventListener("scroll", () => {
+
+    if (window.scrollY <= 5) {
+        header.classList.add("expanded");
+    } else {
+        header.classList.remove("expanded");
+    }
+
+});
