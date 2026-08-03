@@ -270,6 +270,20 @@ background-repeat: no-repeat;
     animation-play-state: paused;
 }
 
+@media (max-width: 768px) {
+    .site-header {
+        height: 300px;
+    }
+
+    .site-header.expanded {
+        height: 300px;
+    }
+
+    .site-header:not(.expanded) {
+        height: 300px;
+    }
+}
+
 
 
 
