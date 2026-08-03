@@ -133,6 +133,27 @@ statusBanner.addEventListener("mousemove", (event) => {
     statusBanner.scrollLeft = scrollLeft - distance;
 });
 
+// Touch support for tablets and phones
+
+statusBanner.addEventListener("touchstart", (event) => {
+    isDragging = true;
+
+    startX = event.touches[0].pageX;
+    scrollLeft = statusBanner.scrollLeft;
+});
+
+statusBanner.addEventListener("touchmove", (event) => {
+    if (!isDragging) return;
+
+    const distance = event.touches[0].pageX - startX;
+
+    statusBanner.scrollLeft = scrollLeft - distance;
+});
+
+statusBanner.addEventListener("touchend", () => {
+    isDragging = false;
+});
+
 let autoScrollSpeed = 1;
 
 function moveStatusBanner() {
