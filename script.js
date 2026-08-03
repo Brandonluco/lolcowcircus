@@ -237,12 +237,17 @@ loadAlert();
 
 const header = document.querySelector(".site-header");
 
-window.addEventListener("scroll", () => {
+let lastScroll = window.scrollY;
 
-    if (window.scrollY <= 1) {
+window.addEventListener("scroll", () => {
+    const currentScroll = window.scrollY;
+
+    if (currentScroll <= 10) {
         header.classList.add("expanded");
-    } else {
+    } 
+    else if (currentScroll > lastScroll) {
         header.classList.remove("expanded");
     }
 
+    lastScroll = currentScroll;
 });

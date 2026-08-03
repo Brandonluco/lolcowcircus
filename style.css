@@ -30,7 +30,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 0 40px;
-height: 160px;
+height: 410px;
 overflow: hidden;
 transition: height 0.4s ease;
 overflow: hidden;
@@ -52,6 +52,10 @@ background-repeat: no-repeat;
 
 .site-header.expanded {
     height: 410px;
+}
+
+.site-header:not(.expanded) {
+    height: 160px;
 }
 
 .logo {
@@ -86,10 +90,10 @@ background-repeat: no-repeat;
     color: #000000;
 }
 
-/*.logo,
 .main-nav {
     position: relative;
     z-index: 1;
+    transition: transform 0.4s ease;
 }
 
 /* ==========================================================================
