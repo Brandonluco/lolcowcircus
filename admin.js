@@ -18,6 +18,9 @@ const articleYoutube = document.getElementById("articleYoutube");
 const articleContentBottom = document.getElementById("articleContentBottom");
 const addArticle = document.getElementById("addArticle");
 const articleList = document.getElementById("articleList");
+const cancelEdit = document.getElementById("cancelEdit");
+const editingStatus = document.getElementById("editingStatus");
+
 
 let streamers = getStreamers();
 
@@ -104,11 +107,21 @@ function displayArticles() {
 
         const div = document.createElement("div");
 
-       div.innerHTML = `
+div.classList.add("admin-article-card");
+
+ div.innerHTML = `
     <strong>${article.title}</strong>
+
     <p>${article.date}</p>
+
+    <p>${article.contentTop}</p>
+
+    ${article.image ? "<p>🖼 Image attached</p>" : ""}
+
+    ${article.youtube ? "<p>▶ YouTube attached</p>" : ""}
+
     <button onclick="editArticle(${index})">Edit</button>
-<button onclick="deleteArticle(${index})">Delete</button>
+    <button onclick="deleteArticle(${index})">Delete</button>
 `;
 
         articleList.appendChild(div);
@@ -151,6 +164,16 @@ function editArticle(index) {
     editingArticleIndex = index;
 
 addArticle.textContent = "Save Changes";
+
+cancelEdit.style.display = "inline-block";
+
+editingStatus.textContent = "Currently editing: " + article.title;
+
+editingStatus.style.display = "block";
+
+document.getElementById("article-manager").scrollIntoView({
+    behavior: "smooth"
+});
 
 }
 
@@ -218,6 +241,29 @@ clearAlert.addEventListener("click", function() {
 
 });
 
+cancelEdit.addEventListener("click", function() {
+
+    editingArticleIndex = null;
+
+    articleTitle.value = "";
+    articleDate.value = "";
+    articleContentTop.value = "";
+    articleImage.value = "";
+    articleYoutube.value = "";
+    articleContentBottom.value = "";
+
+    addArticle.textContent = "Publish Article";
+
+    cancelEdit.style.display = "none";
+
+    editingStatus.style.display = "none";
+
+    editingStatus.textContent = "";
+
+});
+
+
+
 addArticle.addEventListener("click", function() {
 
     const newArticle = {
@@ -243,7 +289,15 @@ if (editingArticleIndex === null) {
 
     addArticle.textContent = "Publish Article";
 
+    cancelEdit.style.display = "none";
+
+    editingStatus.style.display = "none";
+    
+    editingStatus.textContent = "";
+
 }
+
+
 
 saveArticles(savedArticles);
 

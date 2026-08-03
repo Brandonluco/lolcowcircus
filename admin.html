@@ -86,8 +86,10 @@
 
 </section>
 
-<section class="article-manager">
+<section class="article-manager" id="article-manager">
     <h2>Article Manager</h2>
+
+    <div id="editingStatus" style="display:none;"></div>
 
     <input type="text" id="articleTitle" placeholder="Article title">
 
@@ -104,8 +106,13 @@
     <button id="addArticle">
         Publish Article
     </button>
+     
+    <button id="cancelEdit" style="display:none;">
+    Cancel Edit
+</button>
+  
 
-    <h3>Current Articles</h3>
+<h3>Current Articles</h3>
 
 <div id="articleList"></div>
 
