@@ -41,3 +41,45 @@ function saveAlert(alertData) {
     );
 
 }
+
+function getArticles() {
+
+    let saved = localStorage.getItem("articles");
+
+    if (saved) {
+        return JSON.parse(saved);
+    }
+
+    localStorage.setItem(
+        "articles",
+        JSON.stringify(articles)
+    );
+
+    return articles;
+
+}
+
+
+function saveArticles(articleData) {
+
+    localStorage.setItem(
+        "articles",
+        JSON.stringify(articleData)
+    );
+
+}
+
+const articles = [
+    {
+        title: "Welcome To UndergroundCowTube",
+        date: "August 2, 2026",
+
+        contentTop: "Welcome to the first article on UndergroundCowTube. This is where community updates and archive posts will appear.",
+
+        image: "",
+
+        youtube: "https://www.youtube.com/watch?v=7AZddEM6aVA",
+
+        contentBottom: "More updates and community news will be posted here."
+    }
+];

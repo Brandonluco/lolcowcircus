@@ -251,3 +251,56 @@ window.addEventListener("scroll", () => {
 
     lastScroll = currentScroll;
 });
+
+function loadArticles() {
+
+    const container = document.getElementById("articles-container");
+
+    container.innerHTML = "";
+
+   const savedArticles = getArticles();
+
+savedArticles.forEach((article) => {
+
+        const post = document.createElement("article");
+
+        post.classList.add("blog-post");
+
+        post.innerHTML = `
+            <header class="post-header">
+                <h1 class="post-title">${article.title}</h1>
+
+                <div class="post-meta">
+                    ${article.date}
+                </div>
+            </header>
+
+            <div class="post-content">
+
+                <p>${article.contentTop}</p>
+
+                ${article.image ? `<img src="${article.image}" class="article-image">` : ""}
+
+${article.youtube ? `
+<div class="video-container">
+    <iframe 
+        src="${article.youtube}"
+        title="${article.title}"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+</div>
+` : ""}
+
+                <p>${article.contentBottom}</p>
+
+            </div>
+        `;
+
+        container.appendChild(post);
+
+    });
+
+}
+
+loadArticles();

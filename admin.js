@@ -10,8 +10,18 @@ const alertType = document.getElementById("alertType");
 const updateAlert = document.getElementById("updateAlert");
 const clearAlert = document.getElementById("clearAlert");
 const currentAlert = document.getElementById("currentAlert");
+const articleTitle = document.getElementById("articleTitle");
+const articleDate = document.getElementById("articleDate");
+const articleContentTop = document.getElementById("articleContentTop");
+const articleImage = document.getElementById("articleImage");
+const articleYoutube = document.getElementById("articleYoutube");
+const articleContentBottom = document.getElementById("articleContentBottom");
+const addArticle = document.getElementById("addArticle");
+const articleList = document.getElementById("articleList");
 
 let streamers = getStreamers();
+
+let editingArticleIndex = null;
 
 const onlineButton = document.getElementById("onlineButton");
 const awayButton = document.getElementById("awayButton");
@@ -84,8 +94,65 @@ function displayCurrentAlert() {
 
 }
 
+function displayArticles() {
 
+    const savedArticles = getArticles();
 
+    articleList.innerHTML = "";
+
+    savedArticles.forEach((article, index) => {
+
+        const div = document.createElement("div");
+
+       div.innerHTML = `
+    <strong>${article.title}</strong>
+    <p>${article.date}</p>
+    <button onclick="editArticle(${index})">Edit</button>
+<button onclick="deleteArticle(${index})">Delete</button>
+`;
+
+        articleList.appendChild(div);
+
+    });
+
+}
+
+function deleteArticle(index) {
+
+    const confirmDelete = confirm("Are you sure you want to delete this article?");
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    let savedArticles = getArticles();
+
+    savedArticles.splice(index, 1);
+
+    saveArticles(savedArticles);
+
+    displayArticles();
+
+}
+
+function editArticle(index) {
+
+    let savedArticles = getArticles();
+
+    const article = savedArticles[index];
+
+    articleTitle.value = article.title;
+    articleDate.value = article.date;
+    articleContentTop.value = article.contentTop;
+    articleImage.value = article.image;
+    articleYoutube.value = article.youtube;
+    articleContentBottom.value = article.contentBottom;
+
+    editingArticleIndex = index;
+
+addArticle.textContent = "Save Changes";
+
+}
 
 
 onlineButton.addEventListener("click", function() {
@@ -151,7 +218,48 @@ clearAlert.addEventListener("click", function() {
 
 });
 
+addArticle.addEventListener("click", function() {
+
+    const newArticle = {
+        title: articleTitle.value,
+        date: articleDate.value,
+        contentTop: articleContentTop.value,
+        image: articleImage.value,
+        youtube: articleYoutube.value,
+        contentBottom: articleContentBottom.value
+    };
+
+   let savedArticles = getArticles();
+
+if (editingArticleIndex === null) {
+
+    savedArticles.unshift(newArticle);
+
+} else {
+
+    savedArticles[editingArticleIndex] = newArticle;
+
+    editingArticleIndex = null;
+
+    addArticle.textContent = "Publish Article";
+
+}
+
+saveArticles(savedArticles);
+
+console.log("Article saved!");
+
+articleTitle.value = "";
+articleDate.value = "";
+articleContentTop.value = "";
+articleImage.value = "";
+articleYoutube.value = "";
+articleContentBottom.value = "";
+
+});
+
 
 displayStreamers();
 loadStreamerDropdown();
 displayCurrentAlert();
+displayArticles();

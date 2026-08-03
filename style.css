@@ -285,8 +285,20 @@ background-repeat: no-repeat;
     }
 }
 
+.article-image {
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 8px;
+}
 
-
+.blog-post {
+    padding-bottom: 40px;
+    margin-bottom: 40px;
+    border-bottom: 2px solid #eaeaea;
+}
 
 
 
