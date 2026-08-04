@@ -301,6 +301,8 @@ if (editingArticleIndex === null) {
 
 saveArticles(savedArticles);
 
+displayArticles();
+
 console.log("Article saved!");
 
 articleTitle.value = "";

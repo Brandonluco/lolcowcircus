@@ -97,6 +97,54 @@ background-repeat: no-repeat;
     transition: transform 0.4s ease;
 }
 
+.cloud-button {
+    position: absolute;
+    z-index: 2;
+    text-decoration: none;
+    color: #555;
+    font-weight: 700;
+    text-align: center;
+    background: transparent;
+}
+
+.cloud-button img {
+    width: 220px;
+    height: auto;
+    display: block;
+}
+
+.cloud-button span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+}
+
+
+.cloud-home {
+    top: 30px;
+    left: 2%;
+}
+
+.cloud-articles {
+    top: 50px;
+    left: 25%;
+}
+
+.cloud-about {
+    top: 40px;
+    left: 70%;
+}
+
+.site-header:not(.expanded) .cloud-button {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cloud-button {
+    transition: opacity 0.2s ease;
+}
 /* ==========================================================================
    3. LAYOUT CONTAINER & TYPOGRAPHY
    ========================================================================== */

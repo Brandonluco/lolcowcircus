@@ -246,8 +246,11 @@ window.addEventListener("scroll", () => {
         header.classList.add("expanded");
     } 
     else if (currentScroll > lastScroll) {
-        header.classList.remove("expanded");
-    }
+    header.classList.remove("expanded");
+}
+    else {
+    header.classList.add("expanded");
+}
 
     lastScroll = currentScroll;
 });
