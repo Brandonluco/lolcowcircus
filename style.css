@@ -52,7 +52,7 @@ background-repeat: no-repeat;
 }
 
 .site-header.expanded {
-    height: 410px;
+    height: 550px;
 }
 
 .site-header:not(.expanded) {
@@ -123,7 +123,7 @@ background-repeat: no-repeat;
 
 
 .cloud-contact {
-    top: 30px;
+    top: 10px;
     left: 2%;
 }
 
@@ -146,6 +146,41 @@ background-repeat: no-repeat;
     transition: opacity 0.2s ease;
 }
 
+.banner-easter-egg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.banner-bush {
+    position: absolute;
+    z-index: 2;
+    width: 300px;
+    height: auto;
+    bottom: 16px;
+    left: -5px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.banner-fox {
+    position: absolute;
+    z-index: 1;
+    width: 30px;
+    height: auto;
+    bottom: 70px;
+    left: 100px;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.banner-fox.show {
+    opacity: 1;
+    transform: translateY(0);
+}
 
 /* ==========================================================================
    3. LAYOUT CONTAINER & TYPOGRAPHY
@@ -183,6 +218,38 @@ background-repeat: no-repeat;
     word-break: break-word;
 }
 
+.report-button {
+    display: inline-block;
+
+    margin-top: 25px;
+
+    padding: 10px 18px;
+
+    background-color: #f5f5f7;
+
+    border: 1px solid #dcdcdc;
+
+    border-radius: 12px;
+
+    color: #555;
+
+    text-decoration: none;
+
+    font-size: 0.9rem;
+
+    font-weight: 600;
+
+    transition: 
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.report-button:hover {
+    background-color: #eaeaea;
+
+    transform: translateY(-2px);
+}
 /* ==========================================================================
    4. RESPONSIVE VIDEO PLAYER (Perfect 16:9 Aspect Ratio)
    ========================================================================== */
@@ -348,6 +415,221 @@ background-repeat: no-repeat;
     padding-bottom: 40px;
     margin-bottom: 40px;
     border-bottom: 2px solid #eaeaea;
+}
+
+/* ==========================
+   COMMENTS SECTION
+   ========================== */
+
+.comments-section {
+    margin-top: 40px;
+
+    background: #ffffff;
+
+    border: 1px solid #eaeaea;
+
+    border-radius: 12px;
+
+    padding: 25px;
+
+}
+
+
+.comments-section h2 {
+    margin-top: 0;
+
+    font-size: 1.4rem;
+
+    color: #222;
+}
+
+
+/* Empty comments message */
+
+.no-comments {
+    color: #777;
+
+    font-size: 0.95rem;
+
+    margin-bottom: 25px;
+}
+
+
+/* Comment input area */
+
+.comment-input textarea {
+
+    width: 100%;
+
+    min-height: 100px;
+
+    resize: vertical;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    padding: 12px;
+
+    font-family: inherit;
+
+    font-size: 1rem;
+
+}
+
+
+.comment-input button {
+
+    margin-top: 12px;
+
+    padding: 10px 18px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background-color: #333;
+
+    color: white;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: background-color 0.2s ease;
+
+}
+
+
+.comment-input button:hover {
+
+    background-color: #555;
+
+}
+
+/* ==========================
+   COMMENT CARDS
+   ========================== */
+
+.comment {
+    background: #f8f8f8;
+
+    border: 1px solid #e5e5e5;
+
+    border-radius: 12px;
+
+    padding: 15px 18px;
+
+    margin-bottom: 15px;
+}
+
+
+.comment-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 10px;
+}
+
+
+.comment-header strong {
+    font-size: 0.95rem;
+}
+
+
+.comment .timestamp {
+    font-size: 0.8rem;
+
+    color: #888;
+}
+
+
+.comment p {
+    margin: 0;
+
+    color: #444;
+
+    line-height: 1.5;
+}
+
+/* ==========================
+   COMMENT INPUT
+   ========================== */
+
+.comment-input {
+    margin-top: 25px;
+}
+
+
+.comment-input textarea {
+
+    width: 100%;
+
+    min-height: 100px;
+
+    padding: 14px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 12px;
+
+    background: #fafafa;
+
+    font-family: inherit;
+
+    font-size: 1rem;
+
+    color: #333;
+
+    resize: vertical;
+
+    outline: none;
+
+    transition: border-color 0.2s ease,
+                background-color 0.2s ease;
+}
+
+
+.comment-input textarea:focus {
+
+    border-color: #999;
+
+    background: #ffffff;
+}
+
+
+.comment-input button {
+
+    margin-top: 12px;
+
+    padding: 10px 20px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 12px;
+
+    background: #f5f5f7;
+
+    color: #333;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.comment-input button:hover {
+
+    background: #eaeaea;
+
+    transform: translateY(-2px);
 }
 
 

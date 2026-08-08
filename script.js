@@ -17,6 +17,21 @@ const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
 const newMessageAlert = document.getElementById("new-message-alert");
+const bannerBush = document.querySelector(".banner-bush");
+const bannerFox = document.querySelector(".banner-fox");
+
+console.log("Bush found:", bannerBush);
+console.log("Fox found:", bannerFox);
+
+bannerBush.addEventListener("click", function () {
+    console.log("Bush clicked!");
+
+    bannerFox.classList.add("show");
+
+    setTimeout(function () {
+        bannerFox.classList.remove("show");
+    }, 3000);
+});
 
 const guestName = "Guest_" + Math.floor(Math.random() * 1000000);
 const guestColors = [
@@ -295,9 +310,38 @@ ${article.youtube ? `
 </div>
 ` : ""}
 
-                <p>${article.contentBottom}</p>
+<p>${article.contentBottom}</p>
 
-            </div>
+<a href="mailto:undergroundcowtube@gmail.com?subject=Article Report"
+class="report-button">
+    Report Article
+</a>
+
+
+<section class="comments-section">
+
+    <h2>Comments</h2>
+
+    <div class="comment-list" id="comment-list">
+
+        <!-- Comments will load here later -->
+
+    </div>
+
+    <div class="comment-input">
+
+        <textarea placeholder="Write a comment..."></textarea>
+
+        <button>
+            Post Comment
+        </button>
+
+    </div>
+
+</section>
+
+
+</div>
         `;
 
         container.appendChild(post);
@@ -307,3 +351,24 @@ ${article.youtube ? `
 }
 
 loadArticles();
+
+function testComment() {
+
+    const now = new Date();
+
+    const timestamp = now.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric"
+    }) + " • " + now.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit"
+    });
+
+
+    console.log("Comment Guest:", guestName);
+    console.log("Comment Color:", guestColor);
+    console.log("Comment Time:", timestamp);
+
+}
+
+testComment();
