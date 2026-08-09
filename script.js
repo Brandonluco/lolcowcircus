@@ -47,20 +47,55 @@ const guestColors = [
 
 const guestColor = guestColors[Math.floor(Math.random() * guestColors.length)];
 
-function sendMessage() {
-    const message = messageInput.value;
-    const now = new Date();
+async function sendMessage() {
 
-const timestamp = now.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric"
-}) + " • " + now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit"
-});
+    const message = messageInput.value.trim();
+
     if (message === "") {
         return;
     }
+
+    const now = new Date();
+
+    const timestamp = now.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric"
+    }) + " • " + now.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit"
+    });
+
+
+    const commentData = {
+        username: guestName,
+        message: message,
+        color: guestColor,
+        created_at: timestamp
+    };
+
+
+    const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(commentData)
+    });
+
+
+    if (response.ok) {
+
+        messageInput.value = "";
+
+        loadMessages();
+
+    } else {
+
+        console.error("Failed to send comment");
+
+    }
+
+}
 
     const newMessage = document.createElement("div");
 newMessage.classList.add("message");
