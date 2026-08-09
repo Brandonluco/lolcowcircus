@@ -49,6 +49,8 @@ const guestColor = guestColors[Math.floor(Math.random() * guestColors.length)];
 
 async function sendMessage() {
 
+    console.log("Sending to D1");
+
     const message = messageInput.value.trim();
 
     if (message === "") {
