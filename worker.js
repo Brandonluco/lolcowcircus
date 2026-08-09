@@ -22,6 +22,10 @@ export class ChatRoom {
 
     this.sessions.add(server);
 
+    server.addEventListener("error", (event) => {
+  console.log("WebSocket error:", event);
+});
+
     server.addEventListener("close", () => {
   this.sessions.delete(server);
 });
