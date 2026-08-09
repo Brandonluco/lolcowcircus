@@ -77,16 +77,44 @@ if (wasAtBottom) {
     newMessageAlert.style.display = "block";
 }
 
-localStorage.setItem("chatMessages", chatMessages.innerHTML);
+//localStorage.setItem("chatMessages", chatMessages.innerHTML);
     
 messageInput.value = "";
 }
-const savedMessages = localStorage.getItem("chatMessages");
+async function loadMessages() {
 
-if (savedMessages) {
-    chatMessages.innerHTML = savedMessages;
+    const response = await fetch("/api/comments");
+
+    const comments = await response.json();
+
+    chatMessages.innerHTML = "";
+
+    comments.reverse().forEach((comment) => {
+
+        const message = document.createElement("div");
+
+        message.classList.add("message");
+
+        message.innerHTML = `
+            <strong style="color:${comment.color}">
+                ${comment.username}:
+            </strong>
+            ${comment.message}
+            <span class="timestamp">
+                ${comment.created_at}
+            </span>
+        `;
+
+        chatMessages.appendChild(message);
+
+    });
+
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
 }
+
+
+loadMessages();
 
 
 
