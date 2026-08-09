@@ -1,0 +1,11 @@
+name = "cowtube"
+main = "worker.js"
+compatibility_date = "2026-08-09"
+
+[assets]
+directory = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cowtube-db"
+database_id = "4a20d5b4-2525-4649-8837-1b104de7a8bc"
