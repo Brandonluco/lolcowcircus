@@ -355,6 +355,35 @@ background-repeat: no-repeat;
     color: darkslategray;
 }
 
+#identity-card {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+#identity-card h3 {
+    margin-top: 0;
+}
+
+#close-identity-card {
+    position: absolute;
+    right: 10px;
+    top: 8px;
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+#choose-name-button {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+
 .status-banner {
     overflow: hidden;
     white-space: nowrap;

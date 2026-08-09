@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UndergroundCowTube | Where all the cows graze</title>
+    <title>CowTube | Where Cows Come to Roam</title>
     <!-- Includes the metadata profile you liked from the example -->
     <link rel="profile" href="http://gmpg.org">
     <link rel="stylesheet" href="style.css">
@@ -75,12 +75,34 @@
         
      <aside class="chat">
         
-         <div class="chat-header">
+    <div class="chat-header">
         Community Chat
-        </div>
+    </div>
+
+    <div id="identity-card">
+
+        <button id="close-identity-card">×</button>
+
+        <h3>Welcome to Community Chat</h3>
+
+        <p>
+            You are currently:
+            <strong id="current-chat-name"></strong>
+        </p>
+
+        <p>
+            Want people to recognize you?
+            Choose a display name.
+        </p>
+
+        <button id="choose-name-button">
+            Choose Display Name
+        </button>
+
+    </div>
 
 
-     <div id="chat-messages" class="chat-messages">
+    <div id="chat-messages" class="chat-messages">
 
     <div class="message">
         <strong>Guest_123:</strong> Welcome everyone!
@@ -99,30 +121,6 @@
 <div id="new-message-alert">
     New message ↓
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 </aside>
     </div>
