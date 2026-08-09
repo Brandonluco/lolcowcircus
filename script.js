@@ -108,7 +108,7 @@ async function loadMessages() {
 
     chatMessages.innerHTML = "";
 
-    comments.reverse().forEach((comment) => {
+    comments.forEach((comment) => {
 
         const message = document.createElement("div");
 
