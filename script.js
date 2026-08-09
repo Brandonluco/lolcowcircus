@@ -91,7 +91,6 @@ async function sendMessage() {
 
     messageInput.value = "";
 
-    loadMessages();
 
 }
     
