@@ -149,7 +149,27 @@ socket.onopen = () => {
 };
 
 socket.onmessage = (event) => {
-    console.log("LIVE MESSAGE RECEIVED:", event.data);
+
+    const comment = JSON.parse(event.data);
+
+    const message = document.createElement("div");
+
+    message.classList.add("message");
+
+    message.innerHTML = `
+        <strong style="color:${comment.color}">
+            ${comment.username}:
+        </strong>
+        ${comment.message}
+        <span class="timestamp">
+            ${comment.created_at}
+        </span>
+    `;
+
+    chatMessages.appendChild(message);
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
 };
 
 socket.onclose = () => {
