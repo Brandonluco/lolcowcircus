@@ -23,8 +23,12 @@ export class ChatRoom {
     this.sessions.add(server);
 
     server.addEventListener("close", () => {
-      this.sessions.delete(server);
-    });
+  this.sessions.delete(server);
+});
+
+server.addEventListener("error", () => {
+  this.sessions.delete(server);
+});
 
 server.addEventListener("message", (event) => {
 
