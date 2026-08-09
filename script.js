@@ -165,9 +165,16 @@ socket.onmessage = (event) => {
         </span>
     `;
 
-    chatMessages.appendChild(message);
+const isAtBottom =
+    chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
 
+chatMessages.appendChild(message);
+
+if (isAtBottom) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
+} else {
+    newMessageAlert.style.display = "block";
+}
 
 };
 
