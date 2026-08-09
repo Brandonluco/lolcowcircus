@@ -88,7 +88,18 @@ if (saveNameButton) {
 }
 
 
+const identityCard = document.getElementById("identity-card");
+const closeIdentityCard = document.getElementById("close-identity-card");
 
+if (closeIdentityCard) {
+
+    closeIdentityCard.addEventListener("click", function () {
+
+        identityCard.style.display = "none";
+
+    });
+
+}
 
 
 
