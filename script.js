@@ -39,6 +39,58 @@ if (!guestName) {
     guestName = "Guest_" + Math.floor(Math.random() * 1000000);
     localStorage.setItem("chatUsername", guestName);
 }
+const currentChatName = document.getElementById("current-chat-name");
+
+if (currentChatName) {
+    currentChatName.textContent = guestName;
+}
+
+
+const chooseNameButton = document.getElementById("choose-name-button");
+const nameChangeBox = document.getElementById("name-change-box");
+const saveNameButton = document.getElementById("save-name-button");
+const nameInput = document.getElementById("name-input");
+
+
+if (chooseNameButton) {
+
+    chooseNameButton.addEventListener("click", function () {
+
+        nameChangeBox.style.display = "block";
+
+    });
+
+}
+
+
+if (saveNameButton) {
+
+    saveNameButton.addEventListener("click", function () {
+
+        let newName = nameInput.value.trim();
+
+        if (newName === "") {
+            return;
+        }
+
+        guestName = newName;
+
+        localStorage.setItem("chatUsername", guestName);
+
+        currentChatName.textContent = guestName;
+
+        nameInput.value = "";
+
+        nameChangeBox.style.display = "none";
+
+    });
+
+}
+
+
+
+
+
 
 const guestColors = [
     "#8B5A2B", // Brown

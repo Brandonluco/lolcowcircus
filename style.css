@@ -383,6 +383,21 @@ background-repeat: no-repeat;
     cursor: pointer;
 }
 
+#name-change-box {
+    margin-top: 15px;
+}
+
+#name-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+#save-name-button {
+    padding: 8px 12px;
+    cursor: pointer;
+}
 
 .status-banner {
     overflow: hidden;
