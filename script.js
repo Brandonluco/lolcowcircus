@@ -99,25 +99,7 @@ async function sendMessage() {
 
 }
 
-    const newMessage = document.createElement("div");
-newMessage.classList.add("message");
-newMessage.innerHTML = `<strong style="color:${guestColor}">${guestName}:</strong> ${message} <span class="timestamp">${timestamp}</span>`;
-
-const wasAtBottom = 
-    chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
-
-    chatMessages.appendChild(newMessage);
-
-if (wasAtBottom) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-} else {
-    newMessageAlert.style.display = "block";
-}
-
-//localStorage.setItem("chatMessages", chatMessages.innerHTML);
-    
-messageInput.value = "";
-}
+   
 async function loadMessages() {
 
     const response = await fetch("/api/comments");
