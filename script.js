@@ -149,7 +149,7 @@ socket.onopen = () => {
 };
 
 socket.onmessage = (event) => {
-    console.log("New live message:", event.data);
+    console.log("LIVE MESSAGE RECEIVED:", event.data);
 };
 
 socket.onclose = () => {
