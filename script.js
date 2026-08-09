@@ -33,7 +33,13 @@ bannerBush.addEventListener("click", function () {
     }, 3000);
 });
 
-const guestName = "Guest_" + Math.floor(Math.random() * 1000000);
+let guestName = localStorage.getItem("chatUsername");
+
+if (!guestName) {
+    guestName = "Guest_" + Math.floor(Math.random() * 1000000);
+    localStorage.setItem("chatUsername", guestName);
+}
+
 const guestColors = [
     "#8B5A2B", // Brown
     "#A0522D", // Sienna
