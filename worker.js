@@ -88,7 +88,7 @@ export default {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM comments ORDER BY id DESC"
+            "SELECT * FROM comments ORDER BY id ASC"
           )
           .all();
 
