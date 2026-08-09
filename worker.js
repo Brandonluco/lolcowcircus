@@ -1,7 +1,61 @@
+export class ChatRoom {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+    this.sessions = new Set();
+  }
+
+  async fetch(request) {
+    const upgradeHeader = request.headers.get("Upgrade");
+
+    if (upgradeHeader !== "websocket") {
+      return new Response("Expected websocket", {
+        status: 400
+      });
+    }
+
+    const pair = new WebSocketPair();
+
+    const [client, server] = Object.values(pair);
+
+    server.accept();
+
+    this.sessions.add(server);
+
+    server.addEventListener("close", () => {
+      this.sessions.delete(server);
+    });
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client
+    });
+  }
+}
+
+
+
+
+
+
+
+
+
+
 export default {
   async fetch(request, env) {
 
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/chat") {
+
+  const id = env.CHAT_ROOM.idFromName("main");
+
+  const room = env.CHAT_ROOM.get(id);
+
+  return room.fetch(request);
+
+}
 
     // =====================
     // COMMENTS API
