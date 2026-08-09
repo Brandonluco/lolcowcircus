@@ -26,6 +26,16 @@ export class ChatRoom {
       this.sessions.delete(server);
     });
 
+server.addEventListener("message", (event) => {
+
+  for (const session of this.sessions) {
+
+    session.send(event.data);
+
+  }
+
+});
+
     return new Response(null, {
       status: 101,
       webSocket: client

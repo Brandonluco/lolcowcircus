@@ -85,13 +85,17 @@ async function sendMessage() {
     });
 
 
-    if (response.ok) {
+  if (response.ok) {
 
-        messageInput.value = "";
+    socket.send(JSON.stringify(commentData));
 
-        loadMessages();
+    messageInput.value = "";
 
-    } else {
+    loadMessages();
+
+}
+    
+    else {
 
         console.error("Failed to send comment");
 
