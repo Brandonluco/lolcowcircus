@@ -10,3 +10,7 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "cowtube-db"
 database_id = "4a20d5b4-2525-4649-8837-1b104de7a8bc"
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
