@@ -419,14 +419,11 @@ let lastScroll = window.scrollY;
 window.addEventListener("scroll", () => {
     const currentScroll = window.scrollY;
 
-    if (currentScroll <= 10) {
-        header.classList.add("expanded");
-    } 
-    else if (currentScroll > lastScroll) {
-    header.classList.remove("expanded");
-}
-    else {
+if (currentScroll <= 10) {
     header.classList.add("expanded");
+} 
+else {
+    header.classList.remove("expanded");
 }
 
     lastScroll = currentScroll;

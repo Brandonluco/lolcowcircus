@@ -34,7 +34,6 @@ body {
 height: 410px;
 overflow: hidden;
 transition: height 0.4s ease;
-overflow: hidden;
     
     background-size: 100% auto;
 background-position: center bottom;
