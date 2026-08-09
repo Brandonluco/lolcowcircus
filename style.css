@@ -632,6 +632,50 @@ background-repeat: no-repeat;
     transform: translateY(-2px);
 }
 
+/* ==========================
+   COMMENT FOOTER
+   ========================== */
+
+.comment-footer {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-top: 12px;
+
+}
+
+
+.character-count {
+
+    font-size: 0.85rem;
+
+    color: #888;
+
+}
+
+
+.comment-button-disabled {
+
+    padding: 10px 20px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 12px;
+
+    background-color: #eaeaea;
+
+    color: #999;
+
+    font-weight: 600;
+
+    cursor: not-allowed;
+
+}
+
 
 
 /*@keyframes ticker {

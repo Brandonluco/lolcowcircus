@@ -330,13 +330,24 @@ class="report-button">
 
     <div class="comment-input">
 
-        <textarea placeholder="Write a comment..."></textarea>
+    <textarea 
+        placeholder="Write a comment..."
+        maxlength="500">
+    </textarea>
 
-        <button>
+    <div class="comment-footer">
+
+        <span class="character-count">
+            0 / 500
+        </span>
+
+        <button class="comment-button-disabled">
             Post Comment
         </button>
 
     </div>
+
+</div>
 
 </section>
 
