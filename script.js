@@ -136,6 +136,22 @@ async function loadMessages() {
 loadMessages();
 
 
+const socket = new WebSocket(
+    "wss://" + window.location.host + "/api/chat"
+);
+
+socket.onopen = () => {
+    console.log("WebSocket connected");
+};
+
+socket.onmessage = (event) => {
+    console.log("New live message:", event.data);
+};
+
+socket.onclose = () => {
+    console.log("WebSocket disconnected");
+};
+
 
 
 sendButton.addEventListener("click", function () {
