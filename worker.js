@@ -32,6 +32,8 @@ server.addEventListener("error", () => {
 
 server.addEventListener("message", (event) => {
 
+    console.log("Broadcasting:", event.data);
+
   for (const session of this.sessions) {
 
     session.send(event.data);
