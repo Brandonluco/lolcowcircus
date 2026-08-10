@@ -37,6 +37,8 @@ function loadStreamerDropdown() {
 
     streamerSelect.innerHTML = "";
 
+    console.log("Dropdown streamers:", streamers);
+
     streamers.forEach((streamer, index) => {
 
         const option = document.createElement("option");
@@ -289,8 +291,6 @@ async function loadStreamers() {
     const response = await fetch("/api/streamers");
 
     streamers = await response.json();
-
-    console.log("Admin streamers:", streamers);
 
     displayStreamers();
 
