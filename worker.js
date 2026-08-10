@@ -189,7 +189,77 @@ export default {
 
     }
 
-    
+
+    // =====================
+    // STREAMERS API
+    // =====================
+
+    if (url.pathname === "/api/streamers") {
+
+      // GET streamers
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM streamers ORDER BY id ASC"
+          )
+          .all();
+
+        return Response.json(results);
+
+      }
+
+
+      // POST new streamer
+      if (request.method === "POST") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            `
+            INSERT INTO streamers
+            (name, platform, channel, status)
+            VALUES (?, ?, ?, ?)
+            `
+          )
+          .bind(
+            data.name,
+            data.platform,
+            data.channel,
+            data.status
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+
+      // DELETE streamer
+      if (request.method === "DELETE") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "DELETE FROM streamers WHERE id = ?"
+          )
+          .bind(data.id)
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
     // =====================
     // WEBSITE FILES
     // =====================
