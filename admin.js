@@ -72,9 +72,11 @@ function displayStreamers() {
 
 }
 
-function displayCurrentAlert() {
+async function displayCurrentAlert() {
 
-    const alert = getAlert();
+    const response = await fetch("/api/alert");
+
+    const alert = await response.json();
 
     if (!alert) {
         currentAlert.textContent = "No active alert";
