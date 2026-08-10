@@ -348,11 +348,13 @@ function moveStatusBanner() {
 moveStatusBanner();
 
 
-function loadStatusBanner() {
+async function loadStatusBanner() {
 
     statusTrack.innerHTML = "";
 
-    const updatedStreamers = getStreamers();
+    const response = await fetch("/api/streamers");
+
+    const updatedStreamers = await response.json();
 
     for (let i = 0; i < 3; i++) {
 
