@@ -284,7 +284,17 @@ cancelEdit.addEventListener("click", function() {
 
 });
 
+async function loadStreamers() {
 
+    const response = await fetch("/api/streamers");
+
+    streamers = await response.json();
+
+    displayStreamers();
+
+    loadStreamerDropdown();
+
+}
 
 addArticle.addEventListener("click", function() {
 
@@ -319,17 +329,7 @@ if (editingArticleIndex === null) {
 
 }
 
-async function loadStreamers() {
 
-    const response = await fetch("/api/streamers");
-
-    streamers = await response.json();
-
-    displayStreamers();
-
-    loadStreamerDropdown();
-
-}
 
 saveArticles(savedArticles);
 
