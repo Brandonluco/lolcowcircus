@@ -33,24 +33,64 @@ const offlineButton = document.getElementById("offlineButton");
 
 
 
-function loadStreamerDropdown() {
+onlineButton.addEventListener("click", async function() {
 
-    streamerSelect.innerHTML = "";
+    const id = streamerSelect.value;
 
-    console.log("Dropdown streamers:", streamers);
-
-    streamers.forEach((streamer, index) => {
-
-        const option = document.createElement("option");
-
-        option.value = index;
-        option.textContent = streamer.name;
-
-        streamerSelect.appendChild(option);
-
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            status: "online"
+        })
     });
 
-}
+    await loadStreamers();
+
+});
+
+
+awayButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            status: "away"
+        })
+    });
+
+    await loadStreamers();
+
+});
+
+
+offlineButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            status: "offline"
+        })
+    });
+
+    await loadStreamers();
+
+});
 
 
 function displayStreamers() {
