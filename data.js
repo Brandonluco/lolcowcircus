@@ -26,19 +26,15 @@ function saveStreamers(streamerData) {
 }
 
 
-function getAlert() {
+async function saveAlert(alertData) {
 
-   return JSON.parse(localStorage.getItem("alert"));
-
-}
-
-
-function saveAlert(alertData) {
-
-    localStorage.setItem(
-        "alert",
-        JSON.stringify(alertData)
-    );
+    await fetch("/api/alert", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(alertData)
+    });
 
 }
 
