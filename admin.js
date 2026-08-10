@@ -290,6 +290,8 @@ async function loadStreamers() {
 
     streamers = await response.json();
 
+    console.log("Admin streamers:", streamers);
+
     displayStreamers();
 
     loadStreamerDropdown();
