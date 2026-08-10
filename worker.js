@@ -124,7 +124,72 @@ export default {
       }
     }
     
+    // =====================
+    // ALERT API
+    // =====================
 
+    if (url.pathname === "/api/alert") {
+
+      // GET current alert
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM alerts ORDER BY id DESC LIMIT 1"
+          )
+          .all();
+
+        if (results.length === 0) {
+          return Response.json(null);
+        }
+
+        return Response.json(results[0]);
+
+      }
+
+
+      // POST new alert
+      if (request.method === "POST") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "INSERT INTO alerts (type, message) VALUES (?, ?)"
+          )
+          .bind(
+            data.type,
+            data.message
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+
+      // DELETE alert
+      if (request.method === "DELETE") {
+
+        await env.DB
+          .prepare(
+            "DELETE FROM alerts"
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
+    
     // =====================
     // WEBSITE FILES
     // =====================
