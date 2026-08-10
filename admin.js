@@ -326,6 +326,23 @@ cancelEdit.addEventListener("click", function() {
 
 });
 
+function loadStreamerDropdown() {
+
+    streamerSelect.innerHTML = "";
+
+    streamers.forEach((streamer) => {
+
+        const option = document.createElement("option");
+
+        option.value = streamer.id;
+        option.textContent = streamer.name;
+
+        streamerSelect.appendChild(option);
+
+    });
+
+}
+
 async function loadStreamers() {
 
     const response = await fetch("/api/streamers");
