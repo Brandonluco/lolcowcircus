@@ -222,22 +222,38 @@ addStreamer.addEventListener("click", function() {
 
 });
 
-updateAlert.addEventListener("click", function() {
+updateAlert.addEventListener("click", async function() {
 
     const newAlert = {
         type: alertType.value,
         message: alertMessage.value
     };
 
-    saveAlert(newAlert);
+
+    await fetch("/api/alert", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newAlert)
+    });
+
 
     alertMessage.value = "";
 
+    displayCurrentAlert();
+
 });
 
-clearAlert.addEventListener("click", function() {
 
-    localStorage.removeItem("alert");
+clearAlert.addEventListener("click", async function() {
+
+    await fetch("/api/alert", {
+        method: "DELETE"
+    });
+
+
+    displayCurrentAlert();
 
 });
 
