@@ -383,27 +383,40 @@ function loadStatusBanner() {
 
 loadStatusBanner();
 
-function loadAlert() {
+async function loadAlert() {
 
-    const alert = getAlert();
+    const response = await fetch("/api/alert");
+
+    const alert = await response.json();
 
     const alertBox = document.getElementById("alertBox");
 
-    if (!alert) {
-    alertBox.style.display = "none";
-    return;
-}
 
-alertBox.style.display = "block";
+    if (!alert) {
+
+        alertBox.style.display = "none";
+
+        return;
+
+    }
+
+
+    alertBox.style.display = "block";
 
     alertBox.textContent = alert.message;
 
+
     if (alert.type === "news") {
+
         alertBox.style.backgroundColor = "#2ecc71";
+
     }
 
+
     if (alert.type === "maintenance") {
+
         alertBox.style.backgroundColor = "#e74c3c";
+
     }
 
 }
