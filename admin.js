@@ -22,7 +22,7 @@ const cancelEdit = document.getElementById("cancelEdit");
 const editingStatus = document.getElementById("editingStatus");
 
 
-let streamers = getStreamers();
+let streamers = [];
 
 let editingArticleIndex = null;
 
@@ -200,27 +200,31 @@ offlineButton.addEventListener("click", function() {
     displayStreamers();
 });
 
-addStreamer.addEventListener("click", function() {
+addStreamer.addEventListener("click", async function() {
 
     const newStreamer = {
-    name: streamerName.value,
-    platform: streamerPlatform.value,
-    channel: streamerChannel.value,
-    status: streamerStatus.value
-};
+        name: streamerName.value,
+        platform: streamerPlatform.value,
+        channel: streamerChannel.value,
+        status: streamerStatus.value
+    };
 
 
-    streamers.push(newStreamer);
-
-
-  saveStreamers(streamers);
-
-    displayStreamers();
+    await fetch("/api/streamers", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newStreamer)
+    });
 
 
     streamerName.value = "";
     streamerPlatform.value = "";
     streamerChannel.value = "";
+
+
+    await loadStreamers();
 
 });
 
@@ -315,7 +319,17 @@ if (editingArticleIndex === null) {
 
 }
 
+async function loadStreamers() {
 
+    const response = await fetch("/api/streamers");
+
+    streamers = await response.json();
+
+    displayStreamers();
+
+    loadStreamerDropdown();
+
+}
 
 saveArticles(savedArticles);
 
@@ -333,7 +347,6 @@ articleContentBottom.value = "";
 });
 
 
-displayStreamers();
-loadStreamerDropdown();
+loadStreamers();
 displayCurrentAlert();
 displayArticles();
