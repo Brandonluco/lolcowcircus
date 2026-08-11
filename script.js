@@ -478,7 +478,7 @@ savedArticles.forEach((article) => {
 ${article.youtube ? `
 <div class="video-container">
     <iframe 
-        src="${article.youtube}"
+        src="${article.youtube.replace("watch?v=", "embed/")}"
         title="${article.title}"
         frameborder="0"
         allowfullscreen>
