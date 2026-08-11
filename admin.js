@@ -14,6 +14,8 @@ const articleTitle = document.getElementById("articleTitle");
 const articleDate = document.getElementById("articleDate");
 const articleContentTop = document.getElementById("articleContentTop");
 const articleImage = document.getElementById("articleImage");
+const articleImageFile = document.getElementById("articleImageFile");
+const imageUploadStatus = document.getElementById("imageUploadStatus");
 const articleYoutube = document.getElementById("articleYoutube");
 const articleContentBottom = document.getElementById("articleContentBottom");
 const addArticle = document.getElementById("addArticle");
@@ -29,6 +31,37 @@ let streamers = [];
 let loadedArticles = [];
 
 let editingArticleId = null;
+
+articleImageFile.addEventListener("change", async function () {
+
+    const file = articleImageFile.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    imageUploadStatus.textContent = "Uploading...";
+
+    const response = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": file.type || "application/octet-stream"
+        },
+        body: file
+    });
+
+    if (!response.ok) {
+        imageUploadStatus.textContent = "Upload failed. Try again.";
+        return;
+    }
+
+    const data = await response.json();
+
+    articleImage.value = data.path;
+
+    imageUploadStatus.textContent = "Uploaded: " + data.path;
+
+});
 
 const onlineButton = document.getElementById("onlineButton");
 const awayButton = document.getElementById("awayButton");
@@ -309,6 +342,8 @@ cancelEdit.addEventListener("click", function() {
     articleDate.value = "";
     articleContentTop.value = "";
     articleImage.value = "";
+    articleImageFile.value = "";
+    imageUploadStatus.textContent = "";
     articleYoutube.value = "";
     articleContentBottom.value = "";
 
@@ -406,6 +441,8 @@ articleTitle.value = "";
 articleDate.value = "";
 articleContentTop.value = "";
 articleImage.value = "";
+articleImageFile.value = "";
+imageUploadStatus.textContent = "";
 articleYoutube.value = "";
 articleContentBottom.value = "";
 

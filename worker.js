@@ -561,6 +561,49 @@ export default {
     }
 
     // =====================
+    // ARTICLE IMAGE UPLOADS (R2)
+    // =====================
+
+    if (url.pathname === "/api/upload-image" && request.method === "POST") {
+
+      const filename = url.searchParams.get("filename") || "upload";
+
+      const key = `${Date.now()}-${filename}`;
+
+      await env.IMAGES.put(key, request.body, {
+        httpMetadata: {
+          contentType: request.headers.get("Content-Type") || "application/octet-stream"
+        }
+      });
+
+      return Response.json({
+        success: true,
+        path: `/api/images/${key}`
+      });
+
+    }
+
+    if (url.pathname.startsWith("/api/images/")) {
+
+      const key = url.pathname.replace("/api/images/", "");
+
+      const object = await env.IMAGES.get(key);
+
+      if (!object) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      const headers = new Headers();
+
+      object.writeHttpMetadata(headers);
+
+      headers.set("etag", object.httpEtag);
+
+      return new Response(object.body, { headers });
+
+    }
+
+    // =====================
     // WEBSITE FILES
     // =====================
 
