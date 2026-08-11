@@ -421,6 +421,37 @@ export default {
 
 
     // =====================
+    // R2 IMAGE SERVING
+    // =====================
+
+    if (url.pathname.startsWith("/images/")) {
+
+      const fileName = url.pathname.slice("/images/".length);
+
+      if (!fileName) {
+        return new Response("Image not found", {
+          status: 404
+        });
+      }
+
+      const object = await env.IMAGES.get(fileName);
+
+      if (!object) {
+        return new Response("Image not found", {
+          status: 404
+        });
+      }
+
+      return new Response(object.body, {
+        headers: {
+          "Content-Type": object.httpMetadata?.contentType || "application/octet-stream"
+        }
+      });
+
+    }
+
+
+    // =====================
     // WEBSITE FILES
     // =====================
 
