@@ -445,6 +445,53 @@ background-repeat: no-repeat;
     }
 }
 
+/* ==========================================================================
+   PORTRAIT MOBILE LAYOUT
+   Scoped to portrait so landscape phones/tablets keep the existing layout.
+   The header/banner above is intentionally untouched here.
+   ========================================================================== */
+@media (max-width: 768px) and (orientation: portrait) {
+
+    .container {
+        grid-template-columns: 1fr;
+        margin: 20px auto;
+        padding: 0 16px;
+        gap: 24px;
+    }
+
+    .chat {
+        position: static;
+        height: 420px;
+    }
+
+    .post-title {
+        font-size: 1.7rem;
+    }
+
+    .post-content p {
+        font-size: 1.05rem;
+    }
+
+    .comments-section {
+        padding: 18px;
+    }
+
+    .comment-input textarea {
+        min-height: 80px;
+        padding: 10px;
+    }
+
+    .comment-footer {
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .status-track span {
+        font-size: 0.85rem;
+    }
+}
+
 .article-image {
     width: 100%;
     max-width: 900px;
