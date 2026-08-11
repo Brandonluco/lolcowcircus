@@ -384,35 +384,90 @@ export default {
     }
 
     // =====================
-    // IMAGE UPLOAD API
+    // ARTICLE COMMENTS API
     // =====================
 
-    if (url.pathname === "/api/upload-image") {
+    if (url.pathname === "/api/article-comments") {
 
+      // GET comments for one article (public - no IP addresses included)
+      if (request.method === "GET") {
+
+        const articleId = url.searchParams.get("article_id");
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT id, article_id, username, message, color, created_at FROM article_comments WHERE article_id = ? ORDER BY id ASC"
+          )
+          .bind(articleId)
+          .all();
+
+        return Response.json(results);
+
+      }
+
+
+      // POST new comment (blocked if the IP is banned)
       if (request.method === "POST") {
 
-        const formData = await request.formData();
+        const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
-        const file = formData.get("image");
+        const banned = await env.DB
+          .prepare(
+            "SELECT ip_address FROM banned_ips WHERE ip_address = ?"
+          )
+          .bind(ip)
+          .first();
 
-        if (!file) {
-          return Response.json({
-            error: "No image provided"
-          }, { status: 400 });
+        if (banned) {
+
+          return Response.json(
+            { error: "banned" },
+            { status: 403 }
+          );
+
         }
 
-        const fileName =
-          Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const data = await request.json();
 
-        await env.IMAGES.put(fileName, file.stream(), {
-          httpMetadata: {
-            contentType: file.type
-          }
-        });
+        await env.DB
+          .prepare(
+            `
+            INSERT INTO article_comments
+            (article_id, username, message, color, created_at, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `
+          )
+          .bind(
+            data.article_id,
+            data.username,
+            data.message,
+            data.color,
+            data.created_at,
+            ip
+          )
+          .run();
 
         return Response.json({
-          success: true,
-          fileName: fileName
+          success: true
+        });
+
+      }
+
+
+      // DELETE a comment (admin)
+      if (request.method === "DELETE") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "DELETE FROM article_comments WHERE id = ?"
+          )
+          .bind(data.id)
+          .run();
+
+        return Response.json({
+          success: true
         });
 
       }
@@ -420,41 +475,96 @@ export default {
     }
 
 
-    // =====================
-    // R2 IMAGE SERVING
-    // =====================
+    // GET all comments including IP addresses (admin moderation view)
+    if (url.pathname === "/api/article-comments/admin") {
 
-    if (url.pathname.startsWith("/images/")) {
+      if (request.method === "GET") {
 
-      const fileName = url.pathname.slice("/images/".length);
+        const { results } = await env.DB
+          .prepare(
+            `
+            SELECT article_comments.*, articles.title AS article_title
+            FROM article_comments
+            LEFT JOIN articles ON articles.id = article_comments.article_id
+            ORDER BY article_comments.id DESC
+            `
+          )
+          .all();
 
-      if (!fileName) {
-        return new Response("Image not found", {
-          status: 404
-        });
+        return Response.json(results);
+
       }
-
-      const object = await env.IMAGES.get(fileName);
-
-      if (!object) {
-        return new Response("Image not found", {
-          status: 404
-        });
-      }
-
-      return new Response(object.body, {
-        headers: {
-          "Content-Type": object.httpMetadata?.contentType || "application/octet-stream"
-        }
-      });
 
     }
 
+
+    // =====================
+    // BANNED IPS API
+    // =====================
+
+    if (url.pathname === "/api/banned-ips") {
+
+      // GET banned IPs
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM banned_ips ORDER BY banned_at DESC"
+          )
+          .all();
+
+        return Response.json(results);
+
+      }
+
+
+      // POST ban an IP
+      if (request.method === "POST") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "INSERT OR IGNORE INTO banned_ips (ip_address, banned_at) VALUES (?, ?)"
+          )
+          .bind(
+            data.ip_address,
+            new Date().toISOString()
+          )
+          .run();
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+
+      // DELETE unban an IP
+      if (request.method === "DELETE") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "DELETE FROM banned_ips WHERE ip_address = ?"
+          )
+          .bind(data.ip_address)
+          .run();
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
 
     // =====================
     // WEBSITE FILES
     // =====================
 
     return env.ASSETS.fetch(request);
-      }
+
+  }
 };

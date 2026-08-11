@@ -460,6 +460,8 @@ savedArticles.forEach((article) => {
 
         post.classList.add("blog-post");
 
+        post.dataset.articleId = article.id;
+
         post.innerHTML = `
             <header class="post-header">
                 <h1 class="post-title">${article.title}</h1>
@@ -478,7 +480,7 @@ savedArticles.forEach((article) => {
 ${article.youtube ? `
 <div class="video-container">
     <iframe 
-        src="${article.youtube.replace("watch?v=", "embed/")}"
+        src="${article.youtube}"
         title="${article.title}"
         frameborder="0"
         allowfullscreen>
@@ -498,15 +500,16 @@ class="report-button">
 
     <h2>Comments</h2>
 
-    <div class="comment-list" id="comment-list">
+    <div class="comment-list" id="comment-list-${article.id}">
 
-        <!-- Comments will load here later -->
+        <!-- Comments will load here -->
 
     </div>
 
     <div class="comment-input">
 
     <textarea 
+        class="comment-textarea"
         placeholder="Write a comment..."
         maxlength="500">
     </textarea>
@@ -517,7 +520,7 @@ class="report-button">
             0 / 500
         </span>
 
-        <button class="comment-button-disabled">
+        <button class="comment-button-disabled" disabled>
             Post Comment
         </button>
 
@@ -528,14 +531,148 @@ class="report-button">
 </section>
 
 
+
 </div>
         `;
 
         container.appendChild(post);
 
+        loadArticleComments(article.id);
+
     });
 
 }
+
+async function loadArticleComments(articleId) {
+
+    const list = document.getElementById(`comment-list-${articleId}`);
+
+    if (!list) {
+        return;
+    }
+
+    const response = await fetch(`/api/article-comments?article_id=${articleId}`);
+
+    const comments = await response.json();
+
+    if (comments.length === 0) {
+        list.innerHTML = `<p class="no-comments">No comments yet. Be the first to comment.</p>`;
+        return;
+    }
+
+    list.innerHTML = "";
+
+    comments.forEach((comment) => {
+
+        const div = document.createElement("div");
+
+        div.classList.add("comment");
+
+        div.innerHTML = `
+            <div class="comment-header">
+                <strong style="color:${comment.color}">${comment.username}</strong>
+                <span class="timestamp">${comment.created_at}</span>
+            </div>
+            <p>${comment.message}</p>
+        `;
+
+        list.appendChild(div);
+
+    });
+
+}
+
+const articlesContainer = document.getElementById("articles-container");
+
+// Live character count + enable/disable the post button as the user types
+articlesContainer.addEventListener("input", function (event) {
+
+    if (!event.target.classList.contains("comment-textarea")) {
+        return;
+    }
+
+    const textarea = event.target;
+    const footer = textarea.nextElementSibling;
+    const countSpan = footer.querySelector(".character-count");
+    const postButton = footer.querySelector("button");
+
+    countSpan.textContent = `${textarea.value.length} / 500`;
+
+    if (textarea.value.trim().length > 0) {
+        postButton.disabled = false;
+        postButton.classList.remove("comment-button-disabled");
+    } else {
+        postButton.disabled = true;
+        postButton.classList.add("comment-button-disabled");
+    }
+
+});
+
+// Handle posting a comment on any article
+articlesContainer.addEventListener("click", async function (event) {
+
+    const button = event.target.closest(".comment-input button");
+
+    if (!button || button.disabled) {
+        return;
+    }
+
+    const articlePost = button.closest("[data-article-id]");
+    const articleId = articlePost.dataset.articleId;
+    const textarea = button.closest(".comment-input").querySelector("textarea");
+    const message = textarea.value.trim();
+
+    if (message === "") {
+        return;
+    }
+
+    const now = new Date();
+
+    const timestamp = now.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric"
+    }) + " • " + now.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit"
+    });
+
+    const commentData = {
+        article_id: articleId,
+        username: guestName,
+        message: message,
+        color: guestColor,
+        created_at: timestamp
+    };
+
+    const response = await fetch("/api/article-comments", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(commentData)
+    });
+
+    if (response.status === 403) {
+        alert("You've been blocked from posting comments.");
+        return;
+    }
+
+    if (response.ok) {
+
+        textarea.value = "";
+
+        const footer = textarea.nextElementSibling;
+
+        footer.querySelector(".character-count").textContent = "0 / 500";
+
+        button.disabled = true;
+        button.classList.add("comment-button-disabled");
+
+        await loadArticleComments(articleId);
+
+    }
+
+});
 
 loadArticles();
 

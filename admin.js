@@ -20,6 +20,8 @@ const addArticle = document.getElementById("addArticle");
 const articleList = document.getElementById("articleList");
 const cancelEdit = document.getElementById("cancelEdit");
 const editingStatus = document.getElementById("editingStatus");
+const articleCommentList = document.getElementById("articleCommentList");
+const bannedIpList = document.getElementById("bannedIpList");
 
 
 let streamers = [];
@@ -27,10 +29,6 @@ let streamers = [];
 let loadedArticles = [];
 
 let editingArticleId = null;
-
-// The file picker cannot be pre-filled when editing an article. Keep the
-// existing image reference here until the editor chooses a replacement.
-let editingArticleImage = "";
 
 const onlineButton = document.getElementById("onlineButton");
 const awayButton = document.getElementById("awayButton");
@@ -219,8 +217,7 @@ function editArticle(id) {
     articleTitle.value = article.title;
     articleDate.value = article.date;
     articleContentTop.value = article.contentTop;
-    articleImage.value = "";
-    editingArticleImage = article.image || "";
+    articleImage.value = article.image;
     articleYoutube.value = article.youtube;
     articleContentBottom.value = article.contentBottom;
 
@@ -312,7 +309,6 @@ cancelEdit.addEventListener("click", function() {
     articleDate.value = "";
     articleContentTop.value = "";
     articleImage.value = "";
-    editingArticleImage = "";
     articleYoutube.value = "";
     articleContentBottom.value = "";
 
@@ -357,40 +353,11 @@ async function loadStreamers() {
 
 addArticle.addEventListener("click", async function() {
 
-    let imagePath = editingArticleId === null ? "" : editingArticleImage;
-    const selectedImage = articleImage.files[0];
-
-    if (selectedImage) {
-
-        const formData = new FormData();
-        formData.append("image", selectedImage);
-
-        const uploadResponse = await fetch("/api/upload-image", {
-            method: "POST",
-            body: formData
-        });
-
-        if (!uploadResponse.ok) {
-            alert("The image could not be uploaded. The article was not saved.");
-            return;
-        }
-
-        const uploadResult = await uploadResponse.json();
-
-        if (!uploadResult.fileName) {
-            alert("The image upload did not return a file name. The article was not saved.");
-            return;
-        }
-
-        imagePath = "/images/" + uploadResult.fileName;
-
-    }
-
     const newArticle = {
         title: articleTitle.value,
         date: articleDate.value,
         contentTop: articleContentTop.value,
-        image: imagePath,
+        image: articleImage.value,
         youtube: articleYoutube.value,
         contentBottom: articleContentBottom.value
     };
@@ -418,7 +385,6 @@ if (editingArticleId === null) {
     });
 
     editingArticleId = null;
-    editingArticleImage = "";
 
     addArticle.textContent = "Publish Article";
 
@@ -446,6 +412,141 @@ articleContentBottom.value = "";
 });
 
 
+async function displayArticleComments() {
+
+    const response = await fetch("/api/article-comments/admin");
+
+    const comments = await response.json();
+
+    articleCommentList.innerHTML = "";
+
+    if (comments.length === 0) {
+        articleCommentList.innerHTML = "<p>No comments yet.</p>";
+        return;
+    }
+
+    comments.forEach((comment) => {
+
+        const div = document.createElement("div");
+
+        div.classList.add("pending-comment");
+
+        div.innerHTML = `
+            <div class="comment-info">
+                <strong>${comment.username}</strong>
+                <span>${comment.created_at}</span>
+            </div>
+
+            <p>${comment.message}</p>
+
+            <p style="font-size:0.8rem;color:#888;">
+                On: ${comment.article_title || "Unknown article"} &bull; IP: ${comment.ip_address}
+            </p>
+
+            <div class="comment-actions">
+                <button class="delete-comment" onclick="deleteArticleComment(${comment.id})">Delete</button>
+                <button class="approve-comment" onclick="banCommentIp('${comment.ip_address}')">Ban IP</button>
+            </div>
+        `;
+
+        articleCommentList.appendChild(div);
+
+    });
+
+}
+
+async function deleteArticleComment(id) {
+
+    const confirmDelete = confirm("Delete this comment?");
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    await fetch("/api/article-comments", {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id: id })
+    });
+
+    await displayArticleComments();
+
+}
+
+async function banCommentIp(ip) {
+
+    const confirmBan = confirm(`Ban IP ${ip}? They won't be able to post comments anymore.`);
+
+    if (!confirmBan) {
+        return;
+    }
+
+    await fetch("/api/banned-ips", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ip_address: ip })
+    });
+
+    await displayBannedIps();
+
+}
+
+async function displayBannedIps() {
+
+    const response = await fetch("/api/banned-ips");
+
+    const bannedIps = await response.json();
+
+    bannedIpList.innerHTML = "";
+
+    if (bannedIps.length === 0) {
+        bannedIpList.innerHTML = "<p>No banned IPs.</p>";
+        return;
+    }
+
+    bannedIps.forEach((entry) => {
+
+        const div = document.createElement("div");
+
+        div.classList.add("pending-comment");
+
+        div.innerHTML = `
+            <div class="comment-info">
+                <strong>${entry.ip_address}</strong>
+                <span>${entry.banned_at}</span>
+            </div>
+
+            <div class="comment-actions">
+                <button class="delete-comment" onclick="unbanIp('${entry.ip_address}')">Unban</button>
+            </div>
+        `;
+
+        bannedIpList.appendChild(div);
+
+    });
+
+}
+
+async function unbanIp(ip) {
+
+    await fetch("/api/banned-ips", {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ip_address: ip })
+    });
+
+    await displayBannedIps();
+
+}
+
 loadStreamers();
 displayCurrentAlert();
 loadArticles();
+displayArticleComments();
+displayBannedIps();

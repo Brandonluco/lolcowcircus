@@ -98,8 +98,7 @@
 
     <textarea id="articleContentTop" placeholder="Paragraph above media"></textarea>
 
-    <label for="articleImage">📎 Attach Image</label>
-<input type="file" id="articleImage" accept="image/*">
+    <input type="text" id="articleImage" placeholder="Image path (example: images/articles/photo.jpg)">
 
     <input type="text" id="articleYoutube" placeholder="YouTube link">
 
@@ -127,41 +126,17 @@
 
 <section class="admin-comments">
 
-    <h2>Pending Comments</h2>
+    <h2>Article Comments</h2>
 
-    <div class="pending-comment">
+    <div id="articleCommentList"></div>
 
-        <div class="comment-info">
+</section>
 
-            <strong>
-                Guest_744115
-            </strong>
+<section class="admin-comments">
 
-            <span>
-                Aug 8 • 6:21 PM
-            </span>
+    <h2>Banned IPs</h2>
 
-        </div>
-
-
-        <p>
-            This is a test pending comment waiting for approval.
-        </p>
-
-
-        <div class="comment-actions">
-
-            <button class="approve-comment">
-                Approve
-            </button>
-
-            <button class="delete-comment">
-                Delete
-            </button>
-
-        </div>
-
-    </div>
+    <div id="bannedIpList"></div>
 
 </section>
 
