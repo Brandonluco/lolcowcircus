@@ -24,7 +24,9 @@ const editingStatus = document.getElementById("editingStatus");
 
 let streamers = [];
 
-let editingArticleIndex = null;
+let loadedArticles = [];
+
+let editingArticleId = null;
 
 const onlineButton = document.getElementById("onlineButton");
 const awayButton = document.getElementById("awayButton");
@@ -143,11 +145,9 @@ async function displayCurrentAlert() {
 
 function displayArticles() {
 
-    const savedArticles = getArticles();
-
     articleList.innerHTML = "";
 
-    savedArticles.forEach((article, index) => {
+    loadedArticles.forEach((article) => {
 
         const div = document.createElement("div");
 
@@ -164,8 +164,8 @@ div.classList.add("admin-article-card");
 
     ${article.youtube ? "<p>▶ YouTube attached</p>" : ""}
 
-    <button onclick="editArticle(${index})">Edit</button>
-    <button onclick="deleteArticle(${index})">Delete</button>
+    <button onclick="editArticle(${article.id})">Edit</button>
+    <button onclick="deleteArticle(${article.id})">Delete</button>
 `;
 
         articleList.appendChild(div);
@@ -174,7 +174,17 @@ div.classList.add("admin-article-card");
 
 }
 
-function deleteArticle(index) {
+async function loadArticles() {
+
+    const response = await fetch("/api/articles");
+
+    loadedArticles = await response.json();
+
+    displayArticles();
+
+}
+
+async function deleteArticle(id) {
 
     const confirmDelete = confirm("Are you sure you want to delete this article?");
 
@@ -182,21 +192,25 @@ function deleteArticle(index) {
         return;
     }
 
-    let savedArticles = getArticles();
+    await fetch("/api/articles", {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id: id })
+    });
 
-    savedArticles.splice(index, 1);
-
-    saveArticles(savedArticles);
-
-    displayArticles();
+    await loadArticles();
 
 }
 
-function editArticle(index) {
+function editArticle(id) {
 
-    let savedArticles = getArticles();
+    const article = loadedArticles.find((a) => a.id === id);
 
-    const article = savedArticles[index];
+    if (!article) {
+        return;
+    }
 
     articleTitle.value = article.title;
     articleDate.value = article.date;
@@ -205,7 +219,7 @@ function editArticle(index) {
     articleYoutube.value = article.youtube;
     articleContentBottom.value = article.contentBottom;
 
-    editingArticleIndex = index;
+    editingArticleId = id;
 
 addArticle.textContent = "Save Changes";
 
@@ -287,7 +301,7 @@ clearAlert.addEventListener("click", async function() {
 
 cancelEdit.addEventListener("click", function() {
 
-    editingArticleIndex = null;
+    editingArticleId = null;
 
     articleTitle.value = "";
     articleDate.value = "";
@@ -335,7 +349,7 @@ async function loadStreamers() {
 
 }
 
-addArticle.addEventListener("click", function() {
+addArticle.addEventListener("click", async function() {
 
     const newArticle = {
         title: articleTitle.value,
@@ -346,17 +360,29 @@ addArticle.addEventListener("click", function() {
         contentBottom: articleContentBottom.value
     };
 
-   let savedArticles = getArticles();
+if (editingArticleId === null) {
 
-if (editingArticleIndex === null) {
-
-    savedArticles.unshift(newArticle);
+    await fetch("/api/articles", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newArticle)
+    });
 
 } else {
 
-    savedArticles[editingArticleIndex] = newArticle;
+    newArticle.id = editingArticleId;
 
-    editingArticleIndex = null;
+    await fetch("/api/articles", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newArticle)
+    });
+
+    editingArticleId = null;
 
     addArticle.textContent = "Publish Article";
 
@@ -370,9 +396,7 @@ if (editingArticleIndex === null) {
 
 
 
-saveArticles(savedArticles);
-
-displayArticles();
+await loadArticles();
 
 console.log("Article saved!");
 
@@ -388,4 +412,4 @@ articleContentBottom.value = "";
 
 loadStreamers();
 displayCurrentAlert();
-displayArticles();
+loadArticles();

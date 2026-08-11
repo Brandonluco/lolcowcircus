@@ -281,6 +281,109 @@ export default {
     }
 
     // =====================
+    // ARTICLES API
+    // =====================
+
+    if (url.pathname === "/api/articles") {
+
+      // GET articles (newest first)
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM articles ORDER BY id DESC"
+          )
+          .all();
+
+        return Response.json(results);
+
+      }
+
+
+      // POST new article
+      if (request.method === "POST") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            `
+            INSERT INTO articles
+            (title, date, contentTop, image, youtube, contentBottom)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `
+          )
+          .bind(
+            data.title,
+            data.date,
+            data.contentTop,
+            data.image,
+            data.youtube,
+            data.contentBottom
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+
+      // UPDATE existing article
+      if (request.method === "PUT") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            `
+            UPDATE articles
+            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?
+            WHERE id = ?
+            `
+          )
+          .bind(
+            data.title,
+            data.date,
+            data.contentTop,
+            data.image,
+            data.youtube,
+            data.contentBottom,
+            data.id
+          )
+          .run();
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+
+      // DELETE article
+      if (request.method === "DELETE") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "DELETE FROM articles WHERE id = ?"
+          )
+          .bind(data.id)
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
+    // =====================
     // WEBSITE FILES
     // =====================
 

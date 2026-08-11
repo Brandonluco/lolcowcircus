@@ -444,13 +444,15 @@ else {
     lastScroll = currentScroll;
 });
 
-function loadArticles() {
+async function loadArticles() {
 
     const container = document.getElementById("articles-container");
 
     container.innerHTML = "";
 
-   const savedArticles = getArticles();
+   const response = await fetch("/api/articles");
+
+   const savedArticles = await response.json();
 
 savedArticles.forEach((article) => {
 
