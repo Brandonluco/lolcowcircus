@@ -238,6 +238,26 @@ export default {
 
       }
 
+            // UPDATE streamer status
+      if (request.method === "PUT") {
+
+        const data = await request.json();
+
+        await env.DB
+          .prepare(
+            "UPDATE streamers SET status = ? WHERE id = ?"
+          )
+          .bind(
+            data.status,
+            data.id
+          )
+          .run();
+
+        return Response.json({
+          success: true
+        });
+
+      }
 
       // DELETE streamer
       if (request.method === "DELETE") {
