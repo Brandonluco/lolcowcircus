@@ -222,26 +222,6 @@ document.getElementById("article-manager").scrollIntoView({
 }
 
 
-onlineButton.addEventListener("click", function() {
-    streamers[Number(streamerSelect.value)].status = "online";
-    saveStreamers(streamers);
-    displayStreamers();
-});
-
-
-awayButton.addEventListener("click", function() {
-    streamers[Number(streamerSelect.value)].status = "away";
-    saveStreamers(streamers);
-    displayStreamers();
-});
-
-
-offlineButton.addEventListener("click", function() {
-    streamers[Number(streamerSelect.value)].status = "offline";
-    saveStreamers(streamers);
-    displayStreamers();
-});
-
 addStreamer.addEventListener("click", async function() {
 
     const newStreamer = {
