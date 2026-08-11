@@ -578,14 +578,14 @@ export default {
 
       return Response.json({
         success: true,
-        path: `/api/images/${key}`
+        path: `/api/images/${encodeURIComponent(key)}`
       });
 
     }
 
     if (url.pathname.startsWith("/api/images/")) {
 
-      const key = url.pathname.replace("/api/images/", "");
+      const key = decodeURIComponent(url.pathname.replace("/api/images/", ""));
 
       const object = await env.IMAGES.get(key);
 

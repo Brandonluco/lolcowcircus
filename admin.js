@@ -251,6 +251,10 @@ function editArticle(id) {
     articleDate.value = article.date;
     articleContentTop.value = article.contentTop;
     articleImage.value = article.image;
+
+    imageUploadStatus.textContent = article.image
+        ? "Current image: " + article.image + " (choose a new file to replace it)"
+        : "";
     articleYoutube.value = article.youtube;
     articleContentBottom.value = article.contentBottom;
 
