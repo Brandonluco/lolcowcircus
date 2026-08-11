@@ -18,3 +18,7 @@ class_name = "ChatRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "cowtube-images"

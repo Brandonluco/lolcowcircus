@@ -384,10 +384,46 @@ export default {
     }
 
     // =====================
+    // IMAGE UPLOAD API
+    // =====================
+
+    if (url.pathname === "/api/upload-image") {
+
+      if (request.method === "POST") {
+
+        const formData = await request.formData();
+
+        const file = formData.get("image");
+
+        if (!file) {
+          return Response.json({
+            error: "No image provided"
+          }, { status: 400 });
+        }
+
+        const fileName =
+          Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+
+        await env.IMAGES.put(fileName, file.stream(), {
+          httpMetadata: {
+            contentType: file.type
+          }
+        });
+
+        return Response.json({
+          success: true,
+          fileName: fileName
+        });
+
+      }
+
+    }
+
+
+    // =====================
     // WEBSITE FILES
     // =====================
 
     return env.ASSETS.fetch(request);
-
-  }
+      }
 };

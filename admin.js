@@ -28,6 +28,10 @@ let loadedArticles = [];
 
 let editingArticleId = null;
 
+// The file picker cannot be pre-filled when editing an article. Keep the
+// existing image reference here until the editor chooses a replacement.
+let editingArticleImage = "";
+
 const onlineButton = document.getElementById("onlineButton");
 const awayButton = document.getElementById("awayButton");
 
@@ -215,7 +219,8 @@ function editArticle(id) {
     articleTitle.value = article.title;
     articleDate.value = article.date;
     articleContentTop.value = article.contentTop;
-    articleImage.value = article.image;
+    articleImage.value = "";
+    editingArticleImage = article.image || "";
     articleYoutube.value = article.youtube;
     articleContentBottom.value = article.contentBottom;
 
@@ -307,6 +312,7 @@ cancelEdit.addEventListener("click", function() {
     articleDate.value = "";
     articleContentTop.value = "";
     articleImage.value = "";
+    editingArticleImage = "";
     articleYoutube.value = "";
     articleContentBottom.value = "";
 
@@ -351,11 +357,40 @@ async function loadStreamers() {
 
 addArticle.addEventListener("click", async function() {
 
+    let imagePath = editingArticleId === null ? "" : editingArticleImage;
+    const selectedImage = articleImage.files[0];
+
+    if (selectedImage) {
+
+        const formData = new FormData();
+        formData.append("image", selectedImage);
+
+        const uploadResponse = await fetch("/api/upload-image", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!uploadResponse.ok) {
+            alert("The image could not be uploaded. The article was not saved.");
+            return;
+        }
+
+        const uploadResult = await uploadResponse.json();
+
+        if (!uploadResult.fileName) {
+            alert("The image upload did not return a file name. The article was not saved.");
+            return;
+        }
+
+        imagePath = "/images/" + uploadResult.fileName;
+
+    }
+
     const newArticle = {
         title: articleTitle.value,
         date: articleDate.value,
         contentTop: articleContentTop.value,
-        image: articleImage.value,
+        image: imagePath,
         youtube: articleYoutube.value,
         contentBottom: articleContentBottom.value
     };
@@ -383,6 +418,7 @@ if (editingArticleId === null) {
     });
 
     editingArticleId = null;
+    editingArticleImage = "";
 
     addArticle.textContent = "Publish Article";
 
