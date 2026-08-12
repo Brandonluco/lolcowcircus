@@ -557,9 +557,9 @@ class="report-button">
 
 }
 
-function renderCommentHTML(comment, replies) {
+function renderReplyHTML(reply) {
 
-    const repliesHtml = replies.map((reply) => `
+    return `
         <div class="comment reply" data-comment-id="${reply.id}">
             <div class="comment-header">
                 <strong style="color:${reply.color}">${reply.username}</strong>
@@ -567,7 +567,30 @@ function renderCommentHTML(comment, replies) {
             </div>
             <p>${reply.message}</p>
         </div>
-    `).join("");
+    `;
+
+}
+
+function renderCommentHTML(comment, replies) {
+
+    const firstReply = replies[0];
+    const restReplies = replies.slice(1);
+
+    const repliesBlock = replies.length > 0 ? `
+        <div class="replies">
+            ${renderReplyHTML(firstReply)}
+            <div class="replies-extra" id="replies-extra-${comment.id}" style="display:none;">
+                ${restReplies.map(renderReplyHTML).join("")}
+            </div>
+            ${restReplies.length > 0 ? `
+                <div class="replies-toggle-wrap">
+                    <button class="replies-toggle" data-comment-id="${comment.id}" data-count="${restReplies.length}">
+                        ▼ Show ${restReplies.length} more repl${restReplies.length === 1 ? "y" : "ies"}
+                    </button>
+                </div>
+            ` : ""}
+        </div>
+    ` : "";
 
     return `
         <div class="comment" data-comment-id="${comment.id}">
@@ -587,7 +610,7 @@ function renderCommentHTML(comment, replies) {
                 </div>
             </div>
 
-            ${replies.length > 0 ? `<div class="replies">${repliesHtml}</div>` : ""}
+            ${repliesBlock}
         </div>
     `;
 
@@ -669,6 +692,25 @@ articlesContainer.addEventListener("click", async function (event) {
         const form = document.getElementById(`reply-form-${replyToggle.dataset.commentId}`);
 
         form.style.display = form.style.display === "none" ? "block" : "none";
+
+        return;
+
+    }
+
+    // Expand/collapse the rest of a comment's replies
+    const repliesToggle = event.target.closest(".replies-toggle");
+
+    if (repliesToggle) {
+
+        const extra = document.getElementById(`replies-extra-${repliesToggle.dataset.commentId}`);
+        const isHidden = extra.style.display === "none" || extra.style.display === "";
+        const count = repliesToggle.dataset.count;
+
+        extra.style.display = isHidden ? "block" : "none";
+
+        repliesToggle.textContent = isHidden
+            ? "▲ Hide replies"
+            : `▼ Show ${count} more repl${count === "1" ? "y" : "ies"}`;
 
         return;
 

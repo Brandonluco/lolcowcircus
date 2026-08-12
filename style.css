@@ -870,6 +870,27 @@ background-repeat: no-repeat;
     margin-bottom: 0;
 }
 
+.replies-toggle-wrap {
+    text-align: center;
+    margin-top: 12px;
+}
+
+.replies-toggle {
+    background-color: #f5f5f7;
+    border: 1px solid #dcdcdc;
+    color: #555;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 7px 18px;
+    border-radius: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.replies-toggle:hover {
+    background-color: #eaeaea;
+}
+
 
 
 /*@keyframes ticker {
