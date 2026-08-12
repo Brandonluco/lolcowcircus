@@ -62,6 +62,60 @@ server.addEventListener("message", (event) => {
 
 
 
+function slugify(title) {
+
+  return String(title || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "article";
+
+}
+
+async function generateUniqueSlug(env, title, excludeId) {
+
+  const base = slugify(title);
+
+  let slug = base;
+  let counter = 2;
+
+  while (true) {
+
+    let query = "SELECT id FROM articles WHERE slug = ?";
+    const bindings = [slug];
+
+    if (excludeId) {
+      query += " AND id != ?";
+      bindings.push(excludeId);
+    }
+
+    const existing = await env.DB.prepare(query).bind(...bindings).first();
+
+    if (!existing) {
+      break;
+    }
+
+    slug = `${base}-${counter}`;
+    counter++;
+
+  }
+
+  return slug;
+
+}
+
+function escapeHtml(str) {
+
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+}
+
 export default {
   async fetch(request, env) {
 
@@ -295,6 +349,18 @@ export default {
           )
           .all();
 
+        // Backfill slugs for any articles created before slugs existed
+        for (const article of results) {
+          if (!article.slug) {
+            const newSlug = await generateUniqueSlug(env, article.title, article.id);
+            await env.DB
+              .prepare("UPDATE articles SET slug = ? WHERE id = ?")
+              .bind(newSlug, article.id)
+              .run();
+            article.slug = newSlug;
+          }
+        }
+
         return Response.json(results);
 
       }
@@ -305,12 +371,14 @@ export default {
 
         const data = await request.json();
 
+        const slug = await generateUniqueSlug(env, data.title);
+
         await env.DB
           .prepare(
             `
             INSERT INTO articles
-            (title, date, contentTop, image, youtube, contentBottom)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (title, date, contentTop, image, youtube, contentBottom, slug)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -319,13 +387,15 @@ export default {
             data.contentTop,
             data.image,
             data.youtube,
-            data.contentBottom
+            data.contentBottom,
+            slug
           )
           .run();
 
 
         return Response.json({
-          success: true
+          success: true,
+          slug: slug
         });
 
       }
@@ -336,11 +406,23 @@ export default {
 
         const data = await request.json();
 
+        // Keep the existing slug stable even if the title changes, so
+        // previously shared links keep working. Only generate a fresh
+        // one if this article somehow doesn't have one yet.
+        const existing = await env.DB
+          .prepare("SELECT slug FROM articles WHERE id = ?")
+          .bind(data.id)
+          .first();
+
+        const slug = (existing && existing.slug)
+          ? existing.slug
+          : await generateUniqueSlug(env, data.title, data.id);
+
         await env.DB
           .prepare(
             `
             UPDATE articles
-            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?
+            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?, slug = ?
             WHERE id = ?
             `
           )
@@ -351,12 +433,14 @@ export default {
             data.image,
             data.youtube,
             data.contentBottom,
+            slug,
             data.id
           )
           .run();
 
         return Response.json({
-          success: true
+          success: true,
+          slug: slug
         });
 
       }
@@ -602,6 +686,83 @@ export default {
       headers.set("etag", object.httpEtag);
 
       return new Response(object.body, { headers });
+
+    }
+
+    // GET a single article by slug (used by the single-article page)
+    if (url.pathname.startsWith("/api/articles/")) {
+
+      if (request.method === "GET") {
+
+        const slug = decodeURIComponent(url.pathname.replace("/api/articles/", ""));
+
+        const article = await env.DB
+          .prepare("SELECT * FROM articles WHERE slug = ?")
+          .bind(slug)
+          .first();
+
+        if (!article) {
+          return new Response("Not found", { status: 404 });
+        }
+
+        return Response.json(article);
+
+      }
+
+    }
+
+    // =====================
+    // INDIVIDUAL ARTICLE PAGES (server-rendered meta tags for sharing/SEO)
+    // =====================
+
+    if (url.pathname.startsWith("/article/")) {
+
+      const slug = decodeURIComponent(url.pathname.replace("/article/", ""));
+
+      const article = await env.DB
+        .prepare("SELECT * FROM articles WHERE slug = ?")
+        .bind(slug)
+        .first();
+
+      if (!article) {
+        return new Response("Article not found", { status: 404 });
+      }
+
+      const templateRequest = new Request(new URL("/index.html", request.url), request);
+      const templateResponse = await env.ASSETS.fetch(templateRequest);
+      let html = await templateResponse.text();
+
+      const pageTitle = escapeHtml(article.title) + " | CowTube";
+
+      const plainDescription = escapeHtml(
+        (article.contentTop || "").replace(/\s+/g, " ").trim().slice(0, 200)
+      );
+
+      const imageUrl = article.image
+        ? (article.image.startsWith("http") ? article.image : `${url.origin}${article.image}`)
+        : `${url.origin}/Images/Banner/CowTubeClean.png`;
+
+      const canonicalUrl = `${url.origin}/article/${article.slug}`;
+
+      const injectedTags = `
+    <title>${pageTitle}</title>
+    <meta name="description" content="${plainDescription}">
+    <link rel="canonical" href="${canonicalUrl}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="${pageTitle}">
+    <meta property="og:description" content="${plainDescription}">
+    <meta property="og:image" content="${imageUrl}">
+    <meta property="og:url" content="${canonicalUrl}">
+    <meta name="twitter:card" content="summary_large_image">
+    <script>window.SINGLE_ARTICLE_SLUG = ${JSON.stringify(article.slug)};</script>
+`;
+
+      html = html.replace(/<title>.*?<\/title>/i, "");
+      html = html.replace("<head>", `<head>\n${injectedTags}`);
+
+      return new Response(html, {
+        headers: { "Content-Type": "text/html;charset=UTF-8" }
+      });
 
     }
 

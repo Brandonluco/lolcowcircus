@@ -1,18 +1,3 @@
-// Blocks the right-click menu
-document.addEventListener('contextmenu', e => e.preventDefault());
-
-// Blocks common copy hotkeys (Ctrl+C, Ctrl+A, Ctrl+U)
-document.addEventListener('keydown', e => {
-    if (e.ctrlKey || e.metaKey) {
-        if (['c', 'a', 'u'].includes(e.key.toLowerCase())) {
-            e.preventDefault();
-        }
-    }
-});
-
-
-
-
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
@@ -464,9 +449,33 @@ async function loadArticles() {
 
     container.innerHTML = "";
 
-   const response = await fetch("/api/articles");
+    const singleArticleSlug = window.SINGLE_ARTICLE_SLUG || null;
 
-   const savedArticles = await response.json();
+    let savedArticles;
+
+    if (singleArticleSlug) {
+
+        const response = await fetch(`/api/articles/${encodeURIComponent(singleArticleSlug)}`);
+
+        if (!response.ok) {
+            container.innerHTML = `<p>Article not found. <a href="/">Back to homepage</a></p>`;
+            return;
+        }
+
+        savedArticles = [await response.json()];
+
+        const backLink = document.createElement("a");
+        backLink.href = "/";
+        backLink.className = "back-to-articles";
+        backLink.textContent = "← Back to all articles";
+        container.appendChild(backLink);
+
+    } else {
+
+        const response = await fetch("/api/articles");
+        savedArticles = await response.json();
+
+    }
 
 savedArticles.forEach((article) => {
 
@@ -478,7 +487,9 @@ savedArticles.forEach((article) => {
 
         post.innerHTML = `
             <header class="post-header">
-                <h1 class="post-title">${article.title}</h1>
+                <h1 class="post-title">
+                    <a href="/article/${article.slug}" class="post-title-link">${article.title}</a>
+                </h1>
 
                 <div class="post-meta">
                     ${article.date}

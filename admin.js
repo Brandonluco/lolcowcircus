@@ -201,6 +201,7 @@ div.classList.add("admin-article-card");
 
     <button onclick="editArticle(${article.id})">Edit</button>
     <button onclick="deleteArticle(${article.id})">Delete</button>
+    ${article.slug ? `<button onclick="window.open('/article/${article.slug}', '_blank')">View</button>` : ""}
 `;
 
         articleList.appendChild(div);
