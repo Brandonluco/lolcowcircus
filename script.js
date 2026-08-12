@@ -17,6 +17,7 @@ const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
 const newMessageAlert = document.getElementById("new-message-alert");
+const chatCharCount = document.getElementById("chatCharCount");
 const bannerBush = document.querySelector(".banner-bush");
 const bannerFox = document.querySelector(".banner-fox");
 
@@ -160,6 +161,8 @@ async function sendMessage() {
 
     messageInput.value = "";
 
+    chatCharCount.textContent = "0 / 500";
+
 
 }
     
@@ -252,6 +255,10 @@ socket.onclose = () => {
 };
 
 
+
+messageInput.addEventListener("input", function () {
+    chatCharCount.textContent = `${messageInput.value.length} / 500`;
+});
 
 sendButton.addEventListener("click", function () {
     sendMessage();
