@@ -237,6 +237,10 @@ background-repeat: no-repeat;
     word-break: break-word;
 }
 
+.article-text {
+    white-space: pre-line;
+}
+
 .report-button {
     display: inline-block;
 

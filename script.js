@@ -473,7 +473,7 @@ savedArticles.forEach((article) => {
 
             <div class="post-content">
 
-                <p>${article.contentTop}</p>
+                <p class="article-text">${article.contentTop}</p>
 
                 ${article.image ? `<img src="${article.image}" class="article-image">` : ""}
 
@@ -488,7 +488,7 @@ ${article.youtube ? `
 </div>
 ` : ""}
 
-<p>${article.contentBottom}</p>
+<p class="article-text">${article.contentBottom}</p>
 
 <a href="mailto:undergroundcowtube@gmail.com?subject=Article Report"
 class="report-button">
