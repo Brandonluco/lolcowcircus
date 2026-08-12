@@ -745,6 +745,7 @@ export default {
       const canonicalUrl = `${url.origin}/article/${article.slug}`;
 
       const injectedTags = `
+    <base href="/">
     <title>${pageTitle}</title>
     <meta name="description" content="${plainDescription}">
     <link rel="canonical" href="${canonicalUrl}">
