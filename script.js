@@ -121,7 +121,7 @@ async function sendMessage() {
 
     console.log("Sending to D1");
 
-    const message = messageInput.value.trim();
+    const message = messageInput.value.trim().slice(0, 500);
 
     if (message === "") {
         return;
@@ -257,6 +257,13 @@ socket.onclose = () => {
 
 
 messageInput.addEventListener("input", function () {
+
+    // Backstop for voice-to-text/dictation, which can bypass the HTML maxlength
+    // attribute on some browsers by inserting text outside a normal keystroke or paste.
+    if (messageInput.value.length > 500) {
+        messageInput.value = messageInput.value.slice(0, 500);
+    }
+
     chatCharCount.textContent = `${messageInput.value.length} / 500`;
 });
 
