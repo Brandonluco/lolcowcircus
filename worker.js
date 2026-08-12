@@ -396,7 +396,7 @@ export default {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT id, article_id, username, message, color, created_at FROM article_comments WHERE article_id = ? ORDER BY id ASC"
+            "SELECT id, article_id, username, message, color, created_at, parent_id FROM article_comments WHERE article_id = ? ORDER BY id ASC"
           )
           .bind(articleId)
           .all();
@@ -433,8 +433,8 @@ export default {
           .prepare(
             `
             INSERT INTO article_comments
-            (article_id, username, message, color, created_at, ip_address)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (article_id, username, message, color, created_at, ip_address, parent_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -443,7 +443,8 @@ export default {
             data.message,
             data.color,
             data.created_at,
-            ip
+            ip,
+            data.parent_id ?? null
           )
           .run();
 
@@ -483,9 +484,10 @@ export default {
         const { results } = await env.DB
           .prepare(
             `
-            SELECT article_comments.*, articles.title AS article_title
+            SELECT article_comments.*, articles.title AS article_title, parent.username AS reply_to_username
             FROM article_comments
             LEFT JOIN articles ON articles.id = article_comments.article_id
+            LEFT JOIN article_comments AS parent ON parent.id = article_comments.parent_id
             ORDER BY article_comments.id DESC
             `
           )

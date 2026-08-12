@@ -478,6 +478,8 @@ async function displayArticleComments() {
                 <span>${comment.created_at}</span>
             </div>
 
+            ${comment.parent_id ? `<p style="font-size:0.8rem;color:#e67e22;">&#8627; reply to ${comment.reply_to_username || "a comment"}</p>` : ""}
+
             <p>${comment.message}</p>
 
             <p style="font-size:0.8rem;color:#888;">

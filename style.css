@@ -808,6 +808,68 @@ background-repeat: no-repeat;
 
 }
 
+/* ==========================
+   REPLIES
+   ========================== */
+
+.reply-toggle {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 10px;
+}
+
+.reply-toggle:hover {
+    text-decoration: underline;
+}
+
+.reply-form {
+    margin-top: 12px;
+}
+
+.reply-form textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    outline: none;
+}
+
+.reply-form textarea:focus {
+    border-color: #999;
+}
+
+.reply-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.replies {
+    margin-top: 14px;
+    margin-left: 20px;
+    padding-left: 15px;
+    border-left: 2px solid #e5e5e5;
+}
+
+.comment.reply {
+    background: #ffffff;
+    margin-bottom: 10px;
+}
+
+.comment.reply:last-child {
+    margin-bottom: 0;
+}
+
 
 
 /*@keyframes ticker {
