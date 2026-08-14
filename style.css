@@ -62,19 +62,28 @@ body {
     transition: opacity 0.2s ease;
 }
 
-.screen-button::after {
-    content: "";
+.screen-outline {
     position: absolute;
-    inset: -3px;
-    background: rgba(224, 255, 106, 0.16);
-    box-shadow: 0 0 12px 3px rgba(224, 255, 106, 0.72),
-                inset 0 0 14px rgba(255, 255, 255, 0.42);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.screen-outline polygon {
+    fill: rgba(224, 255, 106, 0.07);
+    stroke: rgba(224, 255, 106, 0.95);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 3px rgba(224, 255, 106, 0.95))
+            drop-shadow(0 0 9px rgba(167, 91, 204, 0.65));
     opacity: 0;
     transition: opacity 0.18s ease;
 }
 
-.screen-button:hover::after,
-.screen-button:focus-visible::after {
+.screen-button:hover .screen-outline polygon,
+.screen-button:focus-visible .screen-outline polygon {
     opacity: 1;
 }
 
@@ -83,7 +92,6 @@ body {
     left: 31%;
     width: 12.5%;
     height: 38%;
-    clip-path: polygon(4% 8%, 96% 0, 100% 88%, 0 100%);
 }
 
 .screen-streamers {
@@ -91,7 +99,6 @@ body {
     left: 20%;
     width: 14%;
     height: 31%;
-    clip-path: polygon(5% 9%, 92% 0, 100% 76%, 9% 100%);
 }
 
 .screen-faq {
@@ -99,7 +106,6 @@ body {
     left: 60%;
     width: 16%;
     height: 41%;
-    clip-path: polygon(2% 0, 100% 4%, 94% 100%, 0 88%);
 }
 
 .screen-contact {
@@ -107,7 +113,6 @@ body {
     left: 65%;
     width: 11%;
     height: 24%;
-    clip-path: polygon(12% 4%, 100% 0, 86% 100%, 0 87%);
 }
 
 .site-header:not(.expanded) .screen-button {
