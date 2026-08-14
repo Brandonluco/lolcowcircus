@@ -73,7 +73,7 @@ function slugify(title) {
 
 }
 
-async function generateUniqueSlug(env, title, excludeId) {
+async function generateUniqueSlugInTable(env, table, title, excludeId) {
 
   const base = slugify(title);
 
@@ -82,7 +82,7 @@ async function generateUniqueSlug(env, title, excludeId) {
 
   while (true) {
 
-    let query = "SELECT id FROM articles WHERE slug = ?";
+    let query = `SELECT id FROM ${table} WHERE slug = ?`;
     const bindings = [slug];
 
     if (excludeId) {
@@ -103,6 +103,14 @@ async function generateUniqueSlug(env, title, excludeId) {
 
   return slug;
 
+}
+
+async function generateUniqueSlug(env, title, excludeId) {
+  return generateUniqueSlugInTable(env, "articles", title, excludeId);
+}
+
+async function generateUniqueStreamerSlug(env, name, excludeId) {
+  return generateUniqueSlugInTable(env, "streamers", name, excludeId);
 }
 
 function escapeHtml(str) {
@@ -259,6 +267,18 @@ export default {
           )
           .all();
 
+        // Backfill slugs for any streamers created before slugs existed
+        for (const streamer of results) {
+          if (!streamer.slug) {
+            const newSlug = await generateUniqueStreamerSlug(env, streamer.name, streamer.id);
+            await env.DB
+              .prepare("UPDATE streamers SET slug = ? WHERE id = ?")
+              .bind(newSlug, streamer.id)
+              .run();
+            streamer.slug = newSlug;
+          }
+        }
+
         return Response.json(results);
 
       }
@@ -269,25 +289,29 @@ export default {
 
         const data = await request.json();
 
+        const slug = await generateUniqueStreamerSlug(env, data.name);
+
         await env.DB
           .prepare(
             `
             INSERT INTO streamers
-            (name, platform, channel, status)
-            VALUES (?, ?, ?, ?)
+            (name, platform, channel, status, slug)
+            VALUES (?, ?, ?, ?, ?)
             `
           )
           .bind(
             data.name,
             data.platform,
             data.channel,
-            data.status
+            data.status,
+            slug
           )
           .run();
 
 
         return Response.json({
-          success: true
+          success: true,
+          slug: slug
         });
 
       }
@@ -345,7 +369,12 @@ export default {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM articles ORDER BY id DESC"
+            `
+            SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug
+            FROM articles
+            LEFT JOIN streamers ON articles.streamer_id = streamers.id
+            ORDER BY articles.id DESC
+            `
           )
           .all();
 
@@ -377,8 +406,8 @@ export default {
           .prepare(
             `
             INSERT INTO articles
-            (title, date, contentTop, image, youtube, contentBottom, slug)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (title, date, contentTop, image, youtube, contentBottom, slug, streamer_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -388,7 +417,8 @@ export default {
             data.image,
             data.youtube,
             data.contentBottom,
-            slug
+            slug,
+            data.streamerId || null
           )
           .run();
 
@@ -422,7 +452,7 @@ export default {
           .prepare(
             `
             UPDATE articles
-            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?, slug = ?
+            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?, slug = ?, streamer_id = ?
             WHERE id = ?
             `
           )
@@ -434,6 +464,7 @@ export default {
             data.youtube,
             data.contentBottom,
             slug,
+            data.streamerId || null,
             data.id
           )
           .run();
@@ -697,7 +728,14 @@ export default {
         const slug = decodeURIComponent(url.pathname.replace("/api/articles/", ""));
 
         const article = await env.DB
-          .prepare("SELECT * FROM articles WHERE slug = ?")
+          .prepare(
+            `
+            SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug
+            FROM articles
+            LEFT JOIN streamers ON articles.streamer_id = streamers.id
+            WHERE articles.slug = ?
+            `
+          )
           .bind(slug)
           .first();
 
@@ -708,6 +746,104 @@ export default {
         return Response.json(article);
 
       }
+
+    }
+
+    // =====================
+    // STREAMER ARTICLES API (used by streamer pages)
+    // =====================
+
+    if (url.pathname.startsWith("/api/streamers/") && url.pathname.endsWith("/articles") && request.method === "GET") {
+
+      const streamerSlug = decodeURIComponent(
+        url.pathname.replace("/api/streamers/", "").replace("/articles", "")
+      );
+
+      const streamer = await env.DB
+        .prepare("SELECT * FROM streamers WHERE slug = ?")
+        .bind(streamerSlug)
+        .first();
+
+      if (!streamer) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      const { results: articles } = await env.DB
+        .prepare(
+          `
+          SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug
+          FROM articles
+          LEFT JOIN streamers ON articles.streamer_id = streamers.id
+          WHERE streamers.slug = ?
+          ORDER BY articles.id DESC
+          `
+        )
+        .bind(streamerSlug)
+        .all();
+
+      return Response.json({ streamer, articles });
+
+    }
+
+    // =====================
+    // STREAMER DIRECTORY + INDIVIDUAL STREAMER PAGES (server-rendered meta tags)
+    // =====================
+
+    if (url.pathname === "/streamers" || url.pathname.startsWith("/streamer/")) {
+
+      const isDirectory = url.pathname === "/streamers";
+
+      let pageTitle = "Streamers | CowTube";
+      let plainDescription = "Browse every streamer covered on CowTube.";
+      let injectedExtra = "";
+
+      if (!isDirectory) {
+
+        const slug = decodeURIComponent(url.pathname.replace("/streamer/", ""));
+
+        const streamer = await env.DB
+          .prepare("SELECT * FROM streamers WHERE slug = ?")
+          .bind(slug)
+          .first();
+
+        if (!streamer) {
+          return new Response("Streamer not found", { status: 404 });
+        }
+
+        pageTitle = escapeHtml(streamer.name) + " | CowTube";
+        plainDescription = `Articles about ${escapeHtml(streamer.name)} on CowTube.`;
+        injectedExtra = `<script>window.SINGLE_STREAMER_SLUG = ${JSON.stringify(streamer.slug)};</script>`;
+
+      } else {
+
+        injectedExtra = `<script>window.SHOW_STREAMER_DIRECTORY = true;</script>`;
+
+      }
+
+      const templateRequest = new Request(new URL("/", request.url), request);
+      const templateResponse = await env.ASSETS.fetch(templateRequest);
+      let html = await templateResponse.text();
+
+      const canonicalUrl = `${url.origin}${url.pathname}`;
+
+      const injectedTags = `
+    <base href="/">
+    <title>${pageTitle}</title>
+    <meta name="description" content="${plainDescription}">
+    <link rel="canonical" href="${canonicalUrl}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="${pageTitle}">
+    <meta property="og:description" content="${plainDescription}">
+    <meta property="og:url" content="${canonicalUrl}">
+    ${injectedExtra}
+`;
+
+      html = html.replace(/<title>.*?<\/title>/i, "");
+      html = html.replace("<head>", `<head>\n${injectedTags}`);
+
+      return new Response(html, {
+        headers: { "Content-Type": "text/html;charset=UTF-8" }
+      });
 
     }
 

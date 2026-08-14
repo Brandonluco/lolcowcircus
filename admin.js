@@ -11,6 +11,7 @@ const updateAlert = document.getElementById("updateAlert");
 const clearAlert = document.getElementById("clearAlert");
 const currentAlert = document.getElementById("currentAlert");
 const articleTitle = document.getElementById("articleTitle");
+const articleStreamer = document.getElementById("articleStreamer");
 const articleDate = document.getElementById("articleDate");
 const articleContentTop = document.getElementById("articleContentTop");
 const articleImage = document.getElementById("articleImage");
@@ -191,6 +192,8 @@ div.classList.add("admin-article-card");
  div.innerHTML = `
     <strong>${article.title}</strong>
 
+    ${article.streamerName ? `<p>📺 ${article.streamerName}</p>` : ""}
+
     <p>${article.date}</p>
 
     <p>${article.contentTop}</p>
@@ -249,6 +252,7 @@ function editArticle(id) {
     }
 
     articleTitle.value = article.title;
+    articleStreamer.value = article.streamer_id || "";
     articleDate.value = article.date;
     articleContentTop.value = article.contentTop;
     articleImage.value = article.image;
@@ -344,6 +348,7 @@ cancelEdit.addEventListener("click", function() {
     editingArticleId = null;
 
     articleTitle.value = "";
+    articleStreamer.value = "";
     articleDate.value = "";
     articleContentTop.value = "";
     articleImage.value = "";
@@ -377,6 +382,23 @@ function loadStreamerDropdown() {
 
     });
 
+    const previousValue = articleStreamer.value;
+
+    articleStreamer.innerHTML = `<option value="">— No streamer —</option>`;
+
+    streamers.forEach((streamer) => {
+
+        const option = document.createElement("option");
+
+        option.value = streamer.id;
+        option.textContent = streamer.name;
+
+        articleStreamer.appendChild(option);
+
+    });
+
+    articleStreamer.value = previousValue;
+
 }
 
 async function loadStreamers() {
@@ -395,6 +417,7 @@ addArticle.addEventListener("click", async function() {
 
     const newArticle = {
         title: articleTitle.value,
+        streamerId: articleStreamer.value || null,
         date: articleDate.value,
         contentTop: articleContentTop.value,
         image: articleImage.value,
@@ -443,6 +466,7 @@ await loadArticles();
 console.log("Article saved!");
 
 articleTitle.value = "";
+articleStreamer.value = "";
 articleDate.value = "";
 articleContentTop.value = "";
 articleImage.value = "";

@@ -449,6 +449,16 @@ async function loadArticles() {
 
     container.innerHTML = "";
 
+    if (window.SHOW_STREAMER_DIRECTORY) {
+        await renderStreamerDirectory(container);
+        return;
+    }
+
+    if (window.SINGLE_STREAMER_SLUG) {
+        await renderStreamerArticles(container, window.SINGLE_STREAMER_SLUG);
+        return;
+    }
+
     const singleArticleSlug = window.SINGLE_ARTICLE_SLUG || null;
 
     let savedArticles;
@@ -479,6 +489,18 @@ async function loadArticles() {
 
 savedArticles.forEach((article) => {
 
+        const post = createArticleCard(article);
+
+        container.appendChild(post);
+
+        loadArticleComments(article.id);
+
+    });
+
+}
+
+function createArticleCard(article) {
+
         const post = document.createElement("article");
 
         post.classList.add("blog-post");
@@ -490,6 +512,12 @@ savedArticles.forEach((article) => {
                 <h1 class="post-title">
                     <a href="/article/${article.slug}" class="post-title-link">${article.title}</a>
                 </h1>
+
+                ${article.streamerSlug ? `
+                <a href="/streamer/${article.streamerSlug}" class="streamer-badge">
+                    📺 ${article.streamerName}
+                </a>
+                ` : ""}
 
                 <div class="post-meta">
                     ${article.date}
@@ -560,10 +588,82 @@ class="report-button">
 </div>
         `;
 
+        return post;
+
+}
+
+async function renderStreamerDirectory(container) {
+
+    const response = await fetch("/api/streamers");
+    const streamers = await response.json();
+
+    const heading = document.createElement("h1");
+    heading.className = "post-title";
+    heading.textContent = "Streamers";
+    container.appendChild(heading);
+
+    if (streamers.length === 0) {
+        container.insertAdjacentHTML("beforeend", `<p>No streamers yet.</p>`);
+        return;
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "streamer-grid";
+
+    streamers.forEach((streamer) => {
+
+        const card = document.createElement("a");
+        card.className = "streamer-directory-card";
+        card.href = `/streamer/${streamer.slug}`;
+
+        const statusIcon = streamer.status === "online" ? "🟢"
+            : streamer.status === "away" ? "🟡"
+            : "⚫";
+
+        card.innerHTML = `
+            <strong>${streamer.name}</strong>
+            <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
+        `;
+
+        grid.appendChild(card);
+
+    });
+
+    container.appendChild(grid);
+
+}
+
+async function renderStreamerArticles(container, slug) {
+
+    const response = await fetch(`/api/streamers/${encodeURIComponent(slug)}/articles`);
+
+    if (!response.ok) {
+        container.innerHTML = `<p>Streamer not found. <a href="/streamers">Back to streamers</a></p>`;
+        return;
+    }
+
+    const { streamer, articles } = await response.json();
+
+    const backLink = document.createElement("a");
+    backLink.href = "/streamers";
+    backLink.className = "back-to-articles";
+    backLink.textContent = "← Back to all streamers";
+    container.appendChild(backLink);
+
+    const heading = document.createElement("h1");
+    heading.className = "post-title";
+    heading.textContent = streamer.name;
+    container.appendChild(heading);
+
+    if (articles.length === 0) {
+        container.insertAdjacentHTML("beforeend", `<p>No articles about ${streamer.name} yet.</p>`);
+        return;
+    }
+
+    articles.forEach((article) => {
+        const post = createArticleCard(article);
         container.appendChild(post);
-
         loadArticleComments(article.id);
-
     });
 
 }
