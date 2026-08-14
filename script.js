@@ -443,6 +443,48 @@ else {
     lastScroll = currentScroll;
 });
 
+function renderArticleSkeletons(container, count) {
+
+    for (let i = 0; i < count; i++) {
+
+        const skeleton = document.createElement("div");
+        skeleton.className = "skeleton-post";
+
+        skeleton.innerHTML = `
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-meta"></div>
+            <div class="skeleton-block skeleton-image"></div>
+            <div class="skeleton-line skeleton-text"></div>
+            <div class="skeleton-line skeleton-text"></div>
+            <div class="skeleton-line skeleton-text" style="width:70%;"></div>
+        `;
+
+        container.appendChild(skeleton);
+
+    }
+
+}
+
+function renderCommentSkeletons(list, count) {
+
+    list.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+
+        const skeleton = document.createElement("div");
+        skeleton.className = "skeleton-comment";
+
+        skeleton.innerHTML = `
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+        `;
+
+        list.appendChild(skeleton);
+
+    }
+
+}
+
 async function loadArticles() {
 
     const container = document.getElementById("articles-container");
@@ -450,16 +492,20 @@ async function loadArticles() {
     container.innerHTML = "";
 
     if (window.SHOW_STREAMER_DIRECTORY) {
+        renderArticleSkeletons(container, 2);
         await renderStreamerDirectory(container);
         return;
     }
 
     if (window.SINGLE_STREAMER_SLUG) {
+        renderArticleSkeletons(container, 2);
         await renderStreamerArticles(container, window.SINGLE_STREAMER_SLUG);
         return;
     }
 
     const singleArticleSlug = window.SINGLE_ARTICLE_SLUG || null;
+
+    renderArticleSkeletons(container, singleArticleSlug ? 1 : 3);
 
     let savedArticles;
 
@@ -474,6 +520,8 @@ async function loadArticles() {
 
         savedArticles = [await response.json()];
 
+        container.innerHTML = "";
+
         const backLink = document.createElement("a");
         backLink.href = "/";
         backLink.className = "back-to-articles";
@@ -484,6 +532,8 @@ async function loadArticles() {
 
         const response = await fetch("/api/articles");
         savedArticles = await response.json();
+
+        container.innerHTML = "";
 
     }
 
@@ -597,6 +647,8 @@ async function renderStreamerDirectory(container) {
     const response = await fetch("/api/streamers");
     const streamers = await response.json();
 
+    container.innerHTML = "";
+
     const heading = document.createElement("h1");
     heading.className = "post-title";
     heading.textContent = "Streamers";
@@ -643,6 +695,8 @@ async function renderStreamerArticles(container, slug) {
     }
 
     const { streamer, articles } = await response.json();
+
+    container.innerHTML = "";
 
     const backLink = document.createElement("a");
     backLink.href = "/streamers";
@@ -734,6 +788,8 @@ async function loadArticleComments(articleId) {
     if (!list) {
         return;
     }
+
+    renderCommentSkeletons(list, 2);
 
     const response = await fetch(`/api/article-comments?article_id=${articleId}`);
 
