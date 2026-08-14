@@ -72,12 +72,9 @@ body {
 }
 
 .screen-outline polygon {
-    fill: rgba(224, 255, 106, 0.07);
-    stroke: rgba(224, 255, 106, 0.95);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 0 3px rgba(224, 255, 106, 0.95))
-            drop-shadow(0 0 9px rgba(167, 91, 204, 0.65));
+    fill: rgba(255, 255, 255, 0.13);
+    stroke: none;
+    mix-blend-mode: screen;
     opacity: 0;
     transition: opacity 0.18s ease;
 }
