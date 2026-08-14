@@ -295,8 +295,8 @@ export default {
           .prepare(
             `
             INSERT INTO streamers
-            (name, platform, channel, status, slug)
-            VALUES (?, ?, ?, ?, ?)
+            (name, platform, channel, status, slug, embed_channel_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -304,7 +304,8 @@ export default {
             data.platform,
             data.channel,
             data.status,
-            slug
+            slug,
+            data.embedChannelId || null
           )
           .run();
 
@@ -320,6 +321,22 @@ export default {
       if (request.method === "PUT") {
 
         const data = await request.json();
+
+        if (data.embedChannelId !== undefined) {
+
+          await env.DB
+            .prepare(
+              "UPDATE streamers SET embed_channel_id = ? WHERE id = ?"
+            )
+            .bind(
+              data.embedChannelId || null,
+              data.id
+            )
+            .run();
+
+          return Response.json({ success: true });
+
+        }
 
         await env.DB
           .prepare(

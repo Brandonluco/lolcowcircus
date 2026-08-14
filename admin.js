@@ -1,6 +1,7 @@
 const streamerName = document.getElementById("streamerName");
 const streamerPlatform = document.getElementById("streamerPlatform");
 const streamerChannel = document.getElementById("streamerChannel");
+const streamerEmbedChannelId = document.getElementById("streamerEmbedChannelId");
 const streamerStatus = document.getElementById("streamerStatus");
 const addStreamer = document.getElementById("addStreamer");
 const streamerList = document.getElementById("streamerList");
@@ -146,6 +147,33 @@ function displayStreamers() {
             <p>Status: ${streamer.status}</p>
         `;
 
+        if ((streamer.platform || "").toLowerCase().includes("youtube")) {
+
+            const embedRow = document.createElement("div");
+
+            embedRow.innerHTML = `
+                <input type="text" class="embed-id-input" placeholder="YouTube Channel ID (UC...)" value="${streamer.embed_channel_id || ""}" style="width:220px;">
+                <button class="save-embed-id">Save</button>
+            `;
+
+            embedRow.querySelector(".save-embed-id").addEventListener("click", async function() {
+
+                const value = embedRow.querySelector(".embed-id-input").value;
+
+                await fetch("/api/streamers", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: streamer.id, embedChannelId: value })
+                });
+
+                await loadStreamers();
+
+            });
+
+            div.appendChild(embedRow);
+
+        }
+
         streamerList.appendChild(div);
 
     });
@@ -286,6 +314,7 @@ addStreamer.addEventListener("click", async function() {
         name: streamerName.value,
         platform: streamerPlatform.value,
         channel: streamerChannel.value,
+        embedChannelId: streamerEmbedChannelId.value,
         status: streamerStatus.value
     };
 
@@ -302,6 +331,7 @@ addStreamer.addEventListener("click", async function() {
     streamerName.value = "";
     streamerPlatform.value = "";
     streamerChannel.value = "";
+    streamerEmbedChannelId.value = "";
 
 
     await loadStreamers();

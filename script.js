@@ -685,6 +685,73 @@ async function renderStreamerDirectory(container) {
 
 }
 
+function buildStreamerProfileUrl(streamer) {
+
+    const platform = (streamer.platform || "").toLowerCase();
+    const channel = streamer.channel || "";
+    const handle = channel.startsWith("@") ? channel.slice(1) : channel;
+
+    if (platform.includes("kick")) {
+        return `https://kick.com/${handle}`;
+    }
+    if (platform.includes("youtube")) {
+        return `https://youtube.com/@${handle}`;
+    }
+    if (platform.includes("tiktok")) {
+        return `https://tiktok.com/@${handle}`;
+    }
+    if (platform.includes("vaughnlive") || platform.includes("vaughn live")) {
+        return `https://vaughnlive.tv/${handle}`;
+    }
+
+    return null;
+
+}
+
+function renderStreamerWatchBlock(streamer) {
+
+    const platform = (streamer.platform || "").toLowerCase();
+    const profileUrl = buildStreamerProfileUrl(streamer);
+
+    // Kick: fully reliable embed, no extra setup needed.
+    if (platform.includes("kick")) {
+        return `
+            <div class="video-container">
+                <iframe src="https://player.kick.com/${encodeURIComponent(streamer.channel)}"
+                    frameborder="0" scrolling="no" allowfullscreen></iframe>
+            </div>
+        `;
+    }
+
+    // YouTube: reliable embed, but only once a real Channel ID (UC...) is on file.
+    if (platform.includes("youtube") && streamer.embed_channel_id) {
+        return `
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(streamer.embed_channel_id)}"
+                    frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            </div>
+        `;
+    }
+
+    // Everything else: no reliable embed, so link out instead of showing something broken.
+    if (profileUrl) {
+        return `
+            <a class="watch-live-button" href="${profileUrl}" target="_blank" rel="noopener">
+                ▶ Watch ${escapeForDisplay(streamer.name)} live on ${escapeForDisplay(streamer.platform || "their channel")}
+            </a>
+        `;
+    }
+
+    return "";
+
+}
+
+function escapeForDisplay(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 async function renderStreamerArticles(container, slug) {
 
     const response = await fetch(`/api/streamers/${encodeURIComponent(slug)}/articles`);
@@ -709,8 +776,10 @@ async function renderStreamerArticles(container, slug) {
     heading.textContent = streamer.name;
     container.appendChild(heading);
 
+    container.insertAdjacentHTML("beforeend", renderStreamerWatchBlock(streamer));
+
     if (articles.length === 0) {
-        container.insertAdjacentHTML("beforeend", `<p>No articles about ${streamer.name} yet.</p>`);
+        container.insertAdjacentHTML("beforeend", `<p class="no-comments">No articles about ${escapeForDisplay(streamer.name)} yet — check back soon.</p>`);
         return;
     }
 
