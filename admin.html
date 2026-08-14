@@ -31,7 +31,9 @@
 
 
 <section>
-    <h2>Add New Streamer</h2>
+    <h2>Add / Edit Streamer</h2>
+
+    <div id="streamerEditingStatus" style="display:none;"></div>
 
     <input type="text" id="streamerName" placeholder="Streamer name">
 
@@ -41,6 +43,8 @@
 
     <input type="text" id="streamerEmbedChannelId" placeholder="YouTube Channel ID (optional, for live embed — starts with UC...)">
 
+    <input type="text" id="streamerKickChannel" placeholder="Kick username (optional, lowercase, no @)">
+
     <select id="streamerStatus">
         <option value="online">🟢 Online</option>
         <option value="away">🟡 Away</option>
@@ -49,6 +53,10 @@
 
     <button id="addStreamer">
         Add Streamer
+    </button>
+
+    <button id="cancelStreamerEdit" style="display:none;">
+        Cancel Edit
     </button>
 
 </section>

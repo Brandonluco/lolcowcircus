@@ -2,6 +2,9 @@ const streamerName = document.getElementById("streamerName");
 const streamerPlatform = document.getElementById("streamerPlatform");
 const streamerChannel = document.getElementById("streamerChannel");
 const streamerEmbedChannelId = document.getElementById("streamerEmbedChannelId");
+const streamerKickChannel = document.getElementById("streamerKickChannel");
+const cancelStreamerEdit = document.getElementById("cancelStreamerEdit");
+const streamerEditingStatus = document.getElementById("streamerEditingStatus");
 const streamerStatus = document.getElementById("streamerStatus");
 const addStreamer = document.getElementById("addStreamer");
 const streamerList = document.getElementById("streamerList");
@@ -29,6 +32,8 @@ const bannedIpList = document.getElementById("bannedIpList");
 
 
 let streamers = [];
+
+let editingStreamerId = null;
 
 let loadedArticles = [];
 
@@ -144,68 +149,95 @@ function displayStreamers() {
 
         div.innerHTML = `
             <strong>${streamer.name}</strong>
+            <p>Platform: ${streamer.platform || "(none set)"}</p>
             <p>Status: ${streamer.status}</p>
         `;
 
-        if ((streamer.platform || "").toLowerCase().includes("youtube")) {
+        const actionsRow = document.createElement("div");
 
-            const embedRow = document.createElement("div");
+        actionsRow.innerHTML = `
+            <button class="edit-streamer">Edit</button>
+            <button class="delete-streamer">Delete</button>
+        `;
 
-            embedRow.innerHTML = `
-                <input type="text" class="embed-id-input" placeholder="YouTube Channel ID (UC...)" value="${streamer.embed_channel_id || ""}" style="width:220px;">
-                <button class="save-embed-id">Save</button>
-            `;
+        actionsRow.querySelector(".edit-streamer").addEventListener("click", function() {
+            editStreamer(streamer.id);
+        });
 
-            embedRow.querySelector(".save-embed-id").addEventListener("click", async function() {
+        actionsRow.querySelector(".delete-streamer").addEventListener("click", async function() {
 
-                const value = embedRow.querySelector(".embed-id-input").value;
+            const confirmDelete = confirm(`Delete ${streamer.name}? This can't be undone.`);
 
-                await fetch("/api/streamers", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: streamer.id, embedChannelId: value })
-                });
+            if (!confirmDelete) {
+                return;
+            }
 
-                await loadStreamers();
-
+            await fetch("/api/streamers", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: streamer.id })
             });
 
-            div.appendChild(embedRow);
+            await loadStreamers();
 
-        }
+        });
 
-        if ((streamer.platform || "").toLowerCase().includes("kick")) {
-
-            const kickRow = document.createElement("div");
-
-            kickRow.innerHTML = `
-                <input type="text" class="kick-channel-input" placeholder="Kick username (lowercase, no @)" value="${streamer.kick_channel || ""}" style="width:220px;">
-                <button class="save-kick-channel">Save</button>
-            `;
-
-            kickRow.querySelector(".save-kick-channel").addEventListener("click", async function() {
-
-                const value = kickRow.querySelector(".kick-channel-input").value.trim().toLowerCase();
-
-                await fetch("/api/streamers", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: streamer.id, kickChannel: value })
-                });
-
-                await loadStreamers();
-
-            });
-
-            div.appendChild(kickRow);
-
-        }
+        div.appendChild(actionsRow);
 
         streamerList.appendChild(div);
 
     });
 
 }
+
+function editStreamer(id) {
+
+    const streamer = streamers.find((s) => s.id === id);
+
+    if (!streamer) {
+        return;
+    }
+
+    streamerName.value = streamer.name || "";
+    streamerPlatform.value = streamer.platform || "";
+    streamerChannel.value = streamer.channel || "";
+    streamerEmbedChannelId.value = streamer.embed_channel_id || "";
+    streamerKickChannel.value = streamer.kick_channel || "";
+    streamerStatus.value = streamer.status || "online";
+
+    editingStreamerId = id;
+
+    addStreamer.textContent = "Save Changes";
+
+    cancelStreamerEdit.style.display = "inline-block";
+
+    streamerEditingStatus.textContent = "Currently editing: " + streamer.name;
+    streamerEditingStatus.style.display = "block";
+
+    document.getElementById("streamerName").scrollIntoView({ behavior: "smooth" });
+
+}
+
+function resetStreamerForm() {
+
+    editingStreamerId = null;
+
+    streamerName.value = "";
+    streamerPlatform.value = "";
+    streamerChannel.value = "";
+    streamerEmbedChannelId.value = "";
+    streamerKickChannel.value = "";
+
+    addStreamer.textContent = "Add Streamer";
+
+    cancelStreamerEdit.style.display = "none";
+
+    streamerEditingStatus.style.display = "none";
+    streamerEditingStatus.textContent = "";
+
+}
+
+cancelStreamerEdit.addEventListener("click", resetStreamerForm);
 
 async function displayCurrentAlert() {
 
@@ -337,29 +369,40 @@ document.getElementById("article-manager").scrollIntoView({
 
 addStreamer.addEventListener("click", async function() {
 
-    const newStreamer = {
+    const streamerData = {
         name: streamerName.value,
         platform: streamerPlatform.value,
         channel: streamerChannel.value,
         embedChannelId: streamerEmbedChannelId.value,
+        kickChannel: streamerKickChannel.value.trim().toLowerCase(),
         status: streamerStatus.value
     };
 
+    if (editingStreamerId === null) {
 
-    await fetch("/api/streamers", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(newStreamer)
-    });
+        await fetch("/api/streamers", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(streamerData)
+        });
 
+    } else {
 
-    streamerName.value = "";
-    streamerPlatform.value = "";
-    streamerChannel.value = "";
-    streamerEmbedChannelId.value = "";
+        streamerData.id = editingStreamerId;
 
+        await fetch("/api/streamers", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(streamerData)
+        });
+
+    }
+
+    resetStreamerForm();
 
     await loadStreamers();
 

@@ -322,6 +322,32 @@ export default {
 
         const data = await request.json();
 
+        // Full edit from the admin Edit button — has name/platform/channel present.
+        if (data.name !== undefined) {
+
+          await env.DB
+            .prepare(
+              `
+              UPDATE streamers
+              SET name = ?, platform = ?, channel = ?, status = ?, embed_channel_id = ?, kick_channel = ?
+              WHERE id = ?
+              `
+            )
+            .bind(
+              data.name,
+              data.platform,
+              data.channel,
+              data.status,
+              data.embedChannelId || null,
+              data.kickChannel || null,
+              data.id
+            )
+            .run();
+
+          return Response.json({ success: true });
+
+        }
+
         if (data.embedChannelId !== undefined) {
 
           await env.DB
