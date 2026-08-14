@@ -338,6 +338,22 @@ export default {
 
         }
 
+        if (data.kickChannel !== undefined) {
+
+          await env.DB
+            .prepare(
+              "UPDATE streamers SET kick_channel = ? WHERE id = ?"
+            )
+            .bind(
+              data.kickChannel || null,
+              data.id
+            )
+            .run();
+
+          return Response.json({ success: true });
+
+        }
+
         await env.DB
           .prepare(
             "UPDATE streamers SET status = ? WHERE id = ?"

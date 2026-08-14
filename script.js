@@ -713,11 +713,16 @@ function renderStreamerWatchBlock(streamer) {
     const platform = (streamer.platform || "").toLowerCase();
     const profileUrl = buildStreamerProfileUrl(streamer);
 
-    // Kick: fully reliable embed, no extra setup needed.
+    // Kick: fully reliable embed, no extra setup needed for Kick-only streamers.
+    // Dual-platform streamers (e.g. "YouTube/Kick") need kick_channel set explicitly,
+    // since their "channel" field usually holds their handle for the other platform.
     if (platform.includes("kick")) {
+
+        const kickUsername = streamer.kick_channel || streamer.channel;
+
         return `
             <div class="video-container">
-                <iframe src="https://player.kick.com/${encodeURIComponent(streamer.channel)}"
+                <iframe src="https://player.kick.com/${encodeURIComponent(kickUsername)}"
                     frameborder="0" scrolling="no" allowfullscreen></iframe>
             </div>
         `;

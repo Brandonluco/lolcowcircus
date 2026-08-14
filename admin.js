@@ -174,6 +174,33 @@ function displayStreamers() {
 
         }
 
+        if ((streamer.platform || "").toLowerCase().includes("kick")) {
+
+            const kickRow = document.createElement("div");
+
+            kickRow.innerHTML = `
+                <input type="text" class="kick-channel-input" placeholder="Kick username (lowercase, no @)" value="${streamer.kick_channel || ""}" style="width:220px;">
+                <button class="save-kick-channel">Save</button>
+            `;
+
+            kickRow.querySelector(".save-kick-channel").addEventListener("click", async function() {
+
+                const value = kickRow.querySelector(".kick-channel-input").value.trim().toLowerCase();
+
+                await fetch("/api/streamers", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: streamer.id, kickChannel: value })
+                });
+
+                await loadStreamers();
+
+            });
+
+            div.appendChild(kickRow);
+
+        }
+
         streamerList.appendChild(div);
 
     });
