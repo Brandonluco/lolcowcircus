@@ -728,7 +728,7 @@ export default {
         return new Response("Article not found", { status: 404 });
       }
 
-      const templateRequest = new Request(new URL("/index.html", request.url), request);
+      const templateRequest = new Request(new URL("/", request.url), request);
       const templateResponse = await env.ASSETS.fetch(templateRequest);
       let html = await templateResponse.text();
 
