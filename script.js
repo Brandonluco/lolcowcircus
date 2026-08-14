@@ -3,22 +3,6 @@ const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
 const newMessageAlert = document.getElementById("new-message-alert");
 const chatCharCount = document.getElementById("chatCharCount");
-const bannerBush = document.querySelector(".banner-bush");
-const bannerFox = document.querySelector(".banner-fox");
-
-console.log("Bush found:", bannerBush);
-console.log("Fox found:", bannerFox);
-
-bannerBush.addEventListener("click", function () {
-    console.log("Bush clicked!");
-
-    bannerFox.classList.add("show");
-
-    setTimeout(function () {
-        bannerFox.classList.remove("show");
-    }, 3000);
-});
-
 let guestName = localStorage.getItem("chatUsername");
 
 if (!guestName) {

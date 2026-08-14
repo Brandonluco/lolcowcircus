@@ -30,14 +30,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 40px;
-height: 410px;
-overflow: hidden;
-transition: height 0.4s ease;
-    
-    background-size: 100% auto;
-background-position: center bottom;
-background-repeat: no-repeat;
+    padding: 0;
+    height: 410px;
+    overflow: hidden;
+    transition: height 0.4s ease;
 }
 .header-background {
     position: absolute;
@@ -51,134 +47,72 @@ background-repeat: no-repeat;
 }
 
 .site-header.expanded {
-    height: 550px;
+    height: min(550px, 28.125vw);
 }
 
 .site-header:not(.expanded) {
     height: 160px;
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    padding-top: 12px;
-}
-
-.logo img {
-    width: 240px;
-    height: auto;
-}
-
-.main-nav ul {
-       display: flex;
-    list-style: none;
-    background-color: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 10px 12px;
-}
-
-.main-nav a {
-    text-decoration: none;
-    color: #666666;
-    padding: 10px 15px;
-    font-size: 0.95rem;
-    transition: color 0.2s ease;
-}
-
-.main-nav a:hover {
-    color: #000000;
-}
-
-.main-nav {
-    position: relative;
+.screen-button {
+    position: absolute;
     z-index: 1;
-    transition: transform 0.4s ease;
-}
-
-.cloud-button {
-    position: absolute;
-    z-index: 2;
-    text-decoration: none;
-    color: #555;
-    font-weight: 700;
-    text-align: center;
-    background: transparent;
-}
-
-.cloud-button img {
-    width: 220px;
-    height: auto;
     display: block;
-}
-
-.cloud-button span {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
-}
-
-
-.cloud-contact {
-    top: 10px;
-    left: 2%;
-}
-
-.cloud-articles {
-    top: 50px;
-    left: 25%;
-}
-
-.cloud-about {
-    top: 40px;
-    left: 70%;
-}
-
-.site-header:not(.expanded) .cloud-button {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.cloud-button {
+    cursor: pointer;
     transition: opacity 0.2s ease;
 }
 
-.banner-easter-egg {
+.screen-button::after {
+    content: "";
     position: absolute;
-    inset: 0;
-    overflow: hidden;
-    z-index: 2;
-    pointer-events: none;
-}
-
-.banner-bush {
-    position: absolute;
-    z-index: 2;
-    width: 300px;
-    height: auto;
-    bottom: 16px;
-    left: -5px;
-    cursor: pointer;
-    pointer-events: auto;
-}
-
-.banner-fox {
-    position: absolute;
-    z-index: 1;
-    width: 30px;
-    height: auto;
-    bottom: 70px;
-    left: 100px;
+    inset: -3px;
+    background: rgba(224, 255, 106, 0.16);
+    box-shadow: 0 0 12px 3px rgba(224, 255, 106, 0.72),
+                inset 0 0 14px rgba(255, 255, 255, 0.42);
     opacity: 0;
-    transform: translateY(5px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.18s ease;
 }
 
-.banner-fox.show {
+.screen-button:hover::after,
+.screen-button:focus-visible::after {
     opacity: 1;
-    transform: translateY(0);
+}
+
+.screen-home {
+    top: 28%;
+    left: 31%;
+    width: 12.5%;
+    height: 38%;
+    clip-path: polygon(4% 8%, 96% 0, 100% 88%, 0 100%);
+}
+
+.screen-streamers {
+    top: 53%;
+    left: 20%;
+    width: 14%;
+    height: 31%;
+    clip-path: polygon(5% 9%, 92% 0, 100% 76%, 9% 100%);
+}
+
+.screen-faq {
+    top: 10%;
+    left: 60%;
+    width: 16%;
+    height: 41%;
+    clip-path: polygon(2% 0, 100% 4%, 94% 100%, 0 88%);
+}
+
+.screen-contact {
+    top: 47%;
+    left: 65%;
+    width: 11%;
+    height: 24%;
+    clip-path: polygon(12% 4%, 100% 0, 86% 100%, 0 87%);
+}
+
+.site-header:not(.expanded) .screen-button {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .mobile-nav {
@@ -485,20 +419,6 @@ background-repeat: no-repeat;
 
 .status-banner:hover .status-track {
     animation-play-state: paused;
-}
-
-@media (max-width: 768px) {
-    .site-header {
-        height: 300px;
-    }
-
-    .site-header.expanded {
-        height: 300px;
-    }
-
-    .site-header:not(.expanded) {
-        height: 300px;
-    }
 }
 
 /* ==========================================================================
