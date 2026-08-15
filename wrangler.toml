@@ -2,6 +2,11 @@ name = "cowtube"
 main = "worker.js"
 compatibility_date = "2026-08-09"
 
+# Without this, every GitHub-triggered deploy wipes out any variables/secrets
+# added through the Cloudflare dashboard (like KICK_CLIENT_ID/SECRET) that
+# aren't declared in this file. This tells the deploy to leave them alone.
+keep_vars = true
+
 [assets]
 directory = "."
 binding = "ASSETS"
