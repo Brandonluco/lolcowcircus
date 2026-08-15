@@ -155,24 +155,22 @@ async function checkYoutubeLive(channelId) {
       return null;
     }
 
-    // The /live URL redirects straight to the live broadcast's own watch
-    // page, so the resolved URL is the reliable source for the video ID —
-    // unlike scanning the page HTML, which contains many unrelated
-    // "videoId" references (related videos, thumbnails, ads, etc.) that a
-    // simple text match can pick up by mistake.
-    const urlMatch = res.url.match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
+    const html = await res.text();
 
-    if (!urlMatch) {
-      // Didn't redirect to a watch page at all — channel isn't live.
+    // YouTube's /live URL no longer reliably redirects to /watch?v=... in
+    // the response URL — it can return 200 on the /live URL itself. So we
+    // read the actual video ID out of the page's own canonical link instead
+    // of relying on the URL changing.
+    const canonicalMatch = html.match(
+      /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})"/
+    );
+
+    if (!canonicalMatch) {
+      // Page isn't pointing at a specific video at all — not live.
       return null;
     }
 
-    const videoId = urlMatch[1];
-
-    // Confirm the resolved video is an active broadcast, not just the
-    // channel's most recent upload (YouTube can fall back to that when
-    // there's no live stream).
-    const html = await res.text();
+    const videoId = canonicalMatch[1];
     const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
 
     console.log(`YouTube check for ${channelId}: videoId=${videoId} isLive=${isLive}`);
