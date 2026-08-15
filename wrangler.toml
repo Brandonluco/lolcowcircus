@@ -22,3 +22,7 @@ bucket_name = "cowtube-images"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
+
+[triggers]
+# Checks every YouTube streamer's live status every 5 minutes.
+crons = ["*/5 * * * *"]

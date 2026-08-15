@@ -124,7 +124,87 @@ function escapeHtml(str) {
 
 }
 
+// Checks whether a YouTube channel is currently live by following the
+// channel's /live redirect (the same page a real visitor's browser loads),
+// then confirming the resolved page is actually an active broadcast.
+// No API key, no quota — just an ordinary fetch.
+async function checkYoutubeLive(channelId) {
+
+  try {
+
+    const res = await fetch(
+      `https://www.youtube.com/channel/${encodeURIComponent(channelId)}/live`,
+      {
+        redirect: "follow",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        }
+      }
+    );
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const html = await res.text();
+
+    const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
+
+    if (!isLive) {
+      return null;
+    }
+
+    const match = html.match(/"videoId":"([a-zA-Z0-9_-]{6,})"/);
+
+    return match ? match[1] : null;
+
+  } catch (err) {
+
+    console.log("YouTube live check failed for", channelId, err.message);
+    return null;
+
+  }
+
+}
+
+// Loops over every streamer with a YouTube channel ID on file and refreshes
+// their cached live status in D1. Called on a schedule (see wrangler.toml).
+async function updateYoutubeLiveStatuses(env) {
+
+  const { results } = await env.DB
+    .prepare(
+      `
+      SELECT id, embed_channel_id FROM streamers
+      WHERE platform LIKE '%youtube%'
+      AND embed_channel_id IS NOT NULL
+      AND embed_channel_id != ''
+      `
+    )
+    .all();
+
+  for (const streamer of results) {
+
+    const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id);
+
+    await env.DB
+      .prepare(
+        "UPDATE streamers SET youtube_live_video_id = ?, youtube_checked_at = ? WHERE id = ?"
+      )
+      .bind(liveVideoId, new Date().toISOString(), streamer.id)
+      .run();
+
+  }
+
+}
+
 export default {
+
+  // Runs on the cron schedule defined in wrangler.toml.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(updateYoutubeLiveStatuses(env));
+  },
+
   async fetch(request, env) {
 
     const url = new URL(request.url);

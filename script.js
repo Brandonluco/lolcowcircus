@@ -712,11 +712,15 @@ function renderStreamerWatchBlock(streamer) {
         `;
     }
 
-    // YouTube: reliable embed, but only once a real Channel ID (UC...) is on file.
-    if (platform.includes("youtube") && streamer.embed_channel_id) {
+    // YouTube: the worker checks each channel's live status on a schedule and
+    // caches the actual video ID (youtube_live_video_id) in D1. Embedding that
+    // real video ID is the officially-supported, reliable method — unlike the
+    // old /embed/live_stream?channel= redirect, which YouTube can silently
+    // break at any time since it was never a documented endpoint.
+    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
         return `
             <div class="video-container">
-                <iframe src="https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(streamer.embed_channel_id)}"
+                <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}"
                     frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
         `;
