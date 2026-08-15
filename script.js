@@ -640,7 +640,7 @@ async function renderStreamerDirectory(container) {
 
     container.insertAdjacentHTML(
         "beforeend",
-        `<p class="live-badge-disclaimer">🔴 LIVE badges are most reliable for Kick. YouTube (and any non-Kick platform) relies on an unofficial method to detect live status, so it can occasionally be a few minutes delayed or briefly incorrect.</p>`
+        `<p class="live-badge-disclaimer">🔴 LIVE badges are most reliable for Kick. YouTube (and any non-Kick platform) relies on an unofficial method to detect live status, so it can occasionally be a few minutes delayed or incorrect.</p>`
     );
 
     if (streamers.length === 0) {
