@@ -138,10 +138,18 @@ async function checkYoutubeLive(channelId) {
         redirect: "follow",
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          // Without this, YouTube can route automated-looking requests
+          // through a cookie consent page instead of the actual channel
+          // page, which silently breaks this whole approach (no error,
+          // just never finds a match). This tells YouTube consent is
+          // already handled, same as a browser that already clicked through it.
+          "Cookie": "CONSENT=YES+cb; SOCS=CAI"
         }
       }
     );
+
+    console.log(`YouTube check for ${channelId}: status=${res.status} resolvedUrl=${res.url}`);
 
     if (!res.ok) {
       return null;
@@ -166,6 +174,8 @@ async function checkYoutubeLive(channelId) {
     // there's no live stream).
     const html = await res.text();
     const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
+
+    console.log(`YouTube check for ${channelId}: videoId=${videoId} isLive=${isLive}`);
 
     return isLive ? videoId : null;
 
