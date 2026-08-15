@@ -198,11 +198,128 @@ async function updateYoutubeLiveStatuses(env) {
 
 }
 
+// Gets a short-lived app access token from Kick using the client_credentials
+// grant. Only needs the client ID/secret (stored as Cloudflare secrets) — no
+// user login involved, since we're only reading public channel data.
+async function getKickAppToken(env) {
+
+  try {
+
+    const res = await fetch("https://id.kick.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: env.KICK_CLIENT_ID,
+        client_secret: env.KICK_CLIENT_SECRET
+      })
+    });
+
+    if (!res.ok) {
+      console.log("Kick token request failed:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+
+    return data.access_token || null;
+
+  } catch (err) {
+
+    console.log("Kick token request error:", err.message);
+    return null;
+
+  }
+
+}
+
+// Checks whether a single Kick channel is currently live via Kick's official API.
+async function checkKickLive(slug, token) {
+
+  try {
+
+    const res = await fetch(
+      `https://api.kick.com/public/v1/channels?slug=${encodeURIComponent(slug)}`,
+      {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!res.ok) {
+      return false;
+    }
+
+    const data = await res.json();
+
+    const channel = data.data && data.data[0];
+
+    return Boolean(channel && channel.stream && channel.stream.is_live);
+
+  } catch (err) {
+
+    console.log("Kick live check failed for", slug, err.message);
+    return false;
+
+  }
+
+}
+
+// Loops over every Kick streamer and refreshes their cached live status in D1.
+async function updateKickLiveStatuses(env) {
+
+  const { results } = await env.DB
+    .prepare(
+      `
+      SELECT id, channel, kick_channel FROM streamers
+      WHERE platform LIKE '%kick%'
+      `
+    )
+    .all();
+
+  if (results.length === 0) {
+    return;
+  }
+
+  const token = await getKickAppToken(env);
+
+  if (!token) {
+    // Couldn't get a token this run — skip rather than wrongly marking
+    // everyone offline. We'll try again on the next cron cycle.
+    return;
+  }
+
+  for (const streamer of results) {
+
+    const slugRaw = streamer.kick_channel || streamer.channel || "";
+    const slug = slugRaw.startsWith("@") ? slugRaw.slice(1) : slugRaw;
+
+    if (!slug) {
+      continue;
+    }
+
+    const isLive = await checkKickLive(slug, token);
+
+    await env.DB
+      .prepare(
+        "UPDATE streamers SET kick_is_live = ?, kick_checked_at = ? WHERE id = ?"
+      )
+      .bind(isLive ? 1 : 0, new Date().toISOString(), streamer.id)
+      .run();
+
+  }
+
+}
+
 export default {
 
   // Runs on the cron schedule defined in wrangler.toml.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(updateYoutubeLiveStatuses(env));
+    ctx.waitUntil(updateKickLiveStatuses(env));
   },
 
   async fetch(request, env) {

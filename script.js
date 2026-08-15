@@ -658,7 +658,7 @@ async function renderStreamerDirectory(container) {
 
         // Real "currently broadcasting" state (checked server-side every 5 min),
         // separate from the manual online/away/offline status above.
-        const isLive = Boolean(streamer.youtube_live_video_id);
+        const isLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
 
         card.innerHTML = `
             ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
