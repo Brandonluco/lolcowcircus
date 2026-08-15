@@ -4,7 +4,7 @@ export class ChatRoom {
     this.env = env;
     this.sessions = new Set();
   }
-// trigger redeploy
+
   async fetch(request) {
     const upgradeHeader = request.headers.get("Upgrade");
 
@@ -147,17 +147,40 @@ async function checkYoutubeLive(channelId) {
       return null;
     }
 
-    const html = await res.text();
+    // The /live URL redirects straight to the live broadcast's own watch
+    // page, so the resolved URL is the reliable source for the video ID —
+    // unlike scanning the page HTML, which contains many unrelated
+    // "videoId" references (related videos, thumbnails, ads, etc.) that a
+    // simple text match can pick up by mistake.
+    const urlMatch = res.url.match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
 
-    const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
-
-    if (!isLive) {
+    if (!urlMatch) {
+      // Didn't redirect to a watch page at all — channel isn't live.
       return null;
     }
 
-    const match = html.match(/"videoId":"([a-zA-Z0-9_-]{6,})"/);
+    const videoId = urlMatch[1];
 
-    return match ? match[1] : null;
+    // Confirm the resolved video is an active broadcast right now — not
+    // just the channel's most recent upload, and not a stream scheduled
+    // for later ("upcoming"). Rather than searching the whole page for
+    // "isLive" (which can false-positive on unrelated content elsewhere
+    // on the page, like sidebar recommendations or a scheduled premiere's
+    // waiting-room info), we only look at the text right around this
+    // specific video's own ID, where its real metadata actually lives.
+    const html = await res.text();
+    const videoIdIndex = html.indexOf(`"videoId":"${videoId}"`);
+
+    if (videoIdIndex === -1) {
+      return null;
+    }
+
+    const nearbyText = html.slice(videoIdIndex, videoIdIndex + 2000);
+
+    const isCurrentlyLive = nearbyText.includes('"isLiveNow":true');
+    const isUpcoming = nearbyText.includes('"isUpcoming":true');
+
+    return (isCurrentlyLive && !isUpcoming) ? videoId : null;
 
   } catch (err) {
 
