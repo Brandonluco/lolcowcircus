@@ -253,6 +253,15 @@ body {
     border: 0;
 }
 
+.embed-reliability-note,
+.live-badge-disclaimer {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: -10px;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
 /* ==========================================================================
    5. SITE FOOTER
    ========================================================================== */

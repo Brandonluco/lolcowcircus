@@ -638,6 +638,11 @@ async function renderStreamerDirectory(container) {
     heading.textContent = "Streamers";
     container.appendChild(heading);
 
+    container.insertAdjacentHTML(
+        "beforeend",
+        `<p class="live-badge-disclaimer">🔴 LIVE badges are most reliable for Kick. YouTube (and any non-Kick platform) relies on an unofficial method to detect live status, so it can occasionally be a few minutes delayed or briefly incorrect.</p>`
+    );
+
     if (streamers.length === 0) {
         container.insertAdjacentHTML("beforeend", `<p>No streamers yet.</p>`);
         return;
@@ -728,6 +733,7 @@ function renderStreamerWatchBlock(streamer) {
                 <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}"
                     frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
+            <p class="embed-reliability-note">Live detection for YouTube can occasionally lag or misfire since it relies on an unofficial method. If this looks wrong, try refreshing the page.</p>
         `;
     }
 
