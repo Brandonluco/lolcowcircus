@@ -656,7 +656,12 @@ async function renderStreamerDirectory(container) {
             : streamer.status === "away" ? "🟡"
             : "⚫";
 
+        // Real "currently broadcasting" state (checked server-side every 5 min),
+        // separate from the manual online/away/offline status above.
+        const isLive = Boolean(streamer.youtube_live_video_id);
+
         card.innerHTML = `
+            ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
             <strong>${streamer.name}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
         `;

@@ -535,6 +535,30 @@ body {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 
+.live-badge {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #e74c3c;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    animation: live-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-badge-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.65;
+    }
+}
+
 .streamer-directory-meta {
     font-size: 0.85rem;
     color: #888;
