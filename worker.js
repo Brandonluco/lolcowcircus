@@ -4,7 +4,7 @@ export class ChatRoom {
     this.env = env;
     this.sessions = new Set();
   }
-
+// trigger redeploy
   async fetch(request) {
     const upgradeHeader = request.headers.get("Upgrade");
 
