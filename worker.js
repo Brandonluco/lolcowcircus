@@ -161,18 +161,13 @@ async function checkYoutubeLive(channelId) {
 
     const videoId = urlMatch[1];
 
-    // Confirm the resolved video is an active broadcast right now (not
-    // upcoming/scheduled, not just the channel's latest upload). YouTube's
-    // page includes a specific "liveBroadcastDetails" block that describes
-    // exactly this state for the video the page represents — searching for
-    // that exact key path is far more reliable than a generic "isLive" text
-    // search (too many false positives from sidebar/recommended content) or
-    // a proximity window around the video ID (too easy to miss, since this
-    // block isn't necessarily near where the ID first appears in the HTML).
+    // Confirm the resolved video is an active broadcast, not just the
+    // channel's most recent upload (YouTube can fall back to that when
+    // there's no live stream).
     const html = await res.text();
-    const isCurrentlyLive = html.includes('"liveBroadcastDetails":{"isLiveNow":true');
+    const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
 
-    return isCurrentlyLive ? videoId : null;
+    return isLive ? videoId : null;
 
   } catch (err) {
 
