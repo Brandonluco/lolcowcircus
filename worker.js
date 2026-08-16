@@ -124,6 +124,16 @@ function escapeHtml(str) {
 
 }
 
+// Comment/chat color gets dropped straight into a style="color:..." attribute
+// on the client, so it has to be a real hex color and nothing else — a client
+// can send any string here by POSTing to the API directly instead of going
+// through the UI's color picker, so this can't just be trusted.
+function sanitizeColor(color) {
+
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#8B5A2B";
+
+}
+
 // Checks whether a YouTube channel is currently live by following the
 // channel's /live redirect (the same page a real visitor's browser loads),
 // then confirming the resolved page is actually an active broadcast.
@@ -389,7 +399,7 @@ export default {
           .bind(
             data.username,
             data.message,
-            data.color,
+            sanitizeColor(data.color),
             data.created_at
           )
           .run();
@@ -830,7 +840,7 @@ export default {
             data.article_id,
             data.username,
             data.message,
-            data.color,
+            sanitizeColor(data.color),
             data.created_at,
             ip,
             data.parent_id ?? null

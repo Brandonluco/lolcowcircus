@@ -31,6 +31,12 @@ const articleCommentList = document.getElementById("articleCommentList");
 const bannedIpList = document.getElementById("bannedIpList");
 
 
+function escapeForDisplay(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 let streamers = [];
 
 let editingStreamerId = null;
@@ -599,16 +605,16 @@ async function displayArticleComments() {
 
         div.innerHTML = `
             <div class="comment-info">
-                <strong>${comment.username}</strong>
-                <span>${comment.created_at}</span>
+                <strong>${escapeForDisplay(comment.username)}</strong>
+                <span>${escapeForDisplay(comment.created_at)}</span>
             </div>
 
-            ${comment.parent_id ? `<p style="font-size:0.8rem;color:#e67e22;">&#8627; reply to ${comment.reply_to_username || "a comment"}</p>` : ""}
+            ${comment.parent_id ? `<p style="font-size:0.8rem;color:#e67e22;">&#8627; reply to ${escapeForDisplay(comment.reply_to_username || "a comment")}</p>` : ""}
 
-            <p>${comment.message}</p>
+            <p>${escapeForDisplay(comment.message)}</p>
 
             <p style="font-size:0.8rem;color:#888;">
-                On: ${comment.article_title || "Unknown article"} &bull; IP: ${comment.ip_address}
+                On: ${escapeForDisplay(comment.article_title || "Unknown article")} &bull; IP: ${escapeForDisplay(comment.ip_address)}
             </p>
 
             <div class="comment-actions">
@@ -684,8 +690,8 @@ async function displayBannedIps() {
 
         div.innerHTML = `
             <div class="comment-info">
-                <strong>${entry.ip_address}</strong>
-                <span>${entry.banned_at}</span>
+                <strong>${escapeForDisplay(entry.ip_address)}</strong>
+                <span>${escapeForDisplay(entry.banned_at)}</span>
             </div>
 
             <div class="comment-actions">

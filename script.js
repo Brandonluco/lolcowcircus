@@ -160,11 +160,11 @@ async function loadMessages() {
 
         message.innerHTML = `
             <strong style="color:${comment.color}">
-                ${comment.username}:
+                ${escapeForDisplay(comment.username)}:
             </strong>
-            ${comment.message}
+            ${escapeForDisplay(comment.message)}
             <span class="timestamp">
-                ${comment.created_at}
+                ${escapeForDisplay(comment.created_at)}
             </span>
         `;
 
@@ -198,11 +198,11 @@ socket.onmessage = (event) => {
 
     message.innerHTML = `
         <strong style="color:${comment.color}">
-            ${comment.username}:
+            ${escapeForDisplay(comment.username)}:
         </strong>
-        ${comment.message}
+        ${escapeForDisplay(comment.message)}
         <span class="timestamp">
-            ${comment.created_at}
+            ${escapeForDisplay(comment.created_at)}
         </span>
     `;
 
@@ -800,10 +800,10 @@ function renderReplyHTML(reply) {
     return `
         <div class="comment reply" data-comment-id="${reply.id}">
             <div class="comment-header">
-                <strong style="color:${reply.color}">${reply.username}</strong>
-                <span class="timestamp">${reply.created_at}</span>
+                <strong style="color:${reply.color}">${escapeForDisplay(reply.username)}</strong>
+                <span class="timestamp">${escapeForDisplay(reply.created_at)}</span>
             </div>
-            <p>${reply.message}</p>
+            <p>${escapeForDisplay(reply.message)}</p>
         </div>
     `;
 
@@ -833,10 +833,10 @@ function renderCommentHTML(comment, replies) {
     return `
         <div class="comment" data-comment-id="${comment.id}">
             <div class="comment-header">
-                <strong style="color:${comment.color}">${comment.username}</strong>
-                <span class="timestamp">${comment.created_at}</span>
+                <strong style="color:${comment.color}">${escapeForDisplay(comment.username)}</strong>
+                <span class="timestamp">${escapeForDisplay(comment.created_at)}</span>
             </div>
-            <p>${comment.message}</p>
+            <p>${escapeForDisplay(comment.message)}</p>
 
             <button class="reply-toggle" data-comment-id="${comment.id}">Reply</button>
 
