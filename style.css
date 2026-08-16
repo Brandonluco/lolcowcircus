@@ -517,6 +517,24 @@ body {
     text-decoration: underline;
 }
 
+.excerpt-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.excerpt-comment-count {
+    font-size: 0.85rem;
+    color: #888;
+    text-decoration: none;
+}
+
+.excerpt-comment-count:hover {
+    color: #555;
+    text-decoration: underline;
+}
+
 .blog-post {
     padding-bottom: 40px;
     margin-bottom: 40px;

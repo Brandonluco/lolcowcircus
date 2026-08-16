@@ -749,7 +749,8 @@ export default {
         const { results } = await env.DB
           .prepare(
             `
-            SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug
+            SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug,
+              (SELECT COUNT(*) FROM article_comments WHERE article_comments.article_id = articles.id) AS commentCount
             FROM articles
             LEFT JOIN streamers ON articles.streamer_id = streamers.id
             ORDER BY articles.id DESC
@@ -1159,7 +1160,8 @@ export default {
       const { results: articles } = await env.DB
         .prepare(
           `
-          SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug
+          SELECT articles.*, streamers.name AS streamerName, streamers.slug AS streamerSlug,
+            (SELECT COUNT(*) FROM article_comments WHERE article_comments.article_id = articles.id) AS commentCount
           FROM articles
           LEFT JOIN streamers ON articles.streamer_id = streamers.id
           WHERE streamers.slug = ?

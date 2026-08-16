@@ -657,7 +657,12 @@ function createArticleCard(article, options = {}) {
 
                     <p class="article-text">${truncateText(article.contentTop, 220)}</p>
 
-                    <a href="/article/${article.slug}" class="read-more-link">Read More →</a>
+                    <div class="excerpt-footer">
+                        <a href="/article/${article.slug}" class="read-more-link">Read More →</a>
+                        <a href="/article/${article.slug}#comments-section-${article.id}" class="excerpt-comment-count">
+                            💬 ${article.commentCount || 0} comment${article.commentCount === 1 ? "" : "s"}
+                        </a>
+                    </div>
 
                 </div>
             `;
@@ -708,7 +713,7 @@ class="report-button">
 </a>
 
 
-<section class="comments-section">
+<section class="comments-section" id="comments-section-${article.id}">
 
     <h2>Comments</h2>
 
