@@ -573,6 +573,11 @@ body {
     color: #888;
 }
 
+.streamer-last-live {
+    font-size: 0.78rem;
+    color: #aaa;
+}
+
 .watch-live-button {
     display: inline-block;
     margin: 20px 0 30px;

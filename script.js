@@ -638,6 +638,37 @@ class="report-button">
 
 }
 
+function formatTimeAgo(isoString) {
+
+    if (!isoString) {
+        return null;
+    }
+
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) {
+        return "just now";
+    }
+    if (diffMinutes < 60) {
+        return `${diffMinutes}m ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) {
+        return `${diffDays}d ago`;
+    }
+
+    const diffMonths = Math.floor(diffDays / 30);
+    return `${diffMonths}mo ago`;
+
+}
+
 async function renderStreamerDirectory(container) {
 
     const response = await fetch("/api/streamers");
@@ -677,10 +708,15 @@ async function renderStreamerDirectory(container) {
         // separate from the manual online/away/offline status above.
         const isLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
 
+        // Only show "last live" when they're NOT live right now — the LIVE
+        // badge already covers that case, and repeating it would be noise.
+        const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
+
         card.innerHTML = `
             ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
             <strong>${streamer.name}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
+            ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
         `;
 
         grid.appendChild(card);

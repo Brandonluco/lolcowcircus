@@ -283,11 +283,19 @@ async function updateYoutubeLiveStatuses(env) {
 
     const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id, env);
 
+    const now = new Date().toISOString();
+
     await env.DB
       .prepare(
-        "UPDATE streamers SET youtube_live_video_id = ?, youtube_checked_at = ? WHERE id = ?"
+        `
+        UPDATE streamers
+        SET youtube_live_video_id = ?,
+            youtube_checked_at = ?,
+            last_live_at = CASE WHEN ? IS NOT NULL THEN ? ELSE last_live_at END
+        WHERE id = ?
+        `
       )
-      .bind(liveVideoId, new Date().toISOString(), streamer.id)
+      .bind(liveVideoId, now, liveVideoId, now, streamer.id)
       .run();
 
   }
@@ -399,11 +407,19 @@ async function updateKickLiveStatuses(env) {
 
     const isLive = await checkKickLive(slug, token);
 
+    const now = new Date().toISOString();
+
     await env.DB
       .prepare(
-        "UPDATE streamers SET kick_is_live = ?, kick_checked_at = ? WHERE id = ?"
+        `
+        UPDATE streamers
+        SET kick_is_live = ?,
+            kick_checked_at = ?,
+            last_live_at = CASE WHEN ? THEN ? ELSE last_live_at END
+        WHERE id = ?
+        `
       )
-      .bind(isLive ? 1 : 0, new Date().toISOString(), streamer.id)
+      .bind(isLive ? 1 : 0, now, isLive ? 1 : 0, now, streamer.id)
       .run();
 
   }
