@@ -237,7 +237,21 @@ async function checkYoutubeLive(channelId) {
     }
 
     const videoId = canonicalMatch[1];
-    const isLive = html.includes('"isLiveNow":true') || html.includes('"isLive":true');
+
+    // Searching the whole page for "isLiveNow":true is too broad — this page
+    // also lists recommended/related videos, and if any of those happen to
+    // be live right now, that text shows up on the page even though THIS
+    // channel isn't live. Scope the check to a window right after this
+    // specific video's own ID (where its videoDetails JSON lives) instead
+    // of the entire page.
+    const videoIdIndex = html.indexOf(`"videoId":"${videoId}"`);
+
+    let isLive = false;
+
+    if (videoIdIndex !== -1) {
+      const nearby = html.slice(videoIdIndex, videoIdIndex + 2000);
+      isLive = nearby.includes('"isLiveNow":true') || nearby.includes('"isLive":true');
+    }
 
     console.log(`YouTube check for ${channelId}: videoId=${videoId} isLive=${isLive}`);
 
@@ -409,6 +423,54 @@ export default {
   async fetch(request, env) {
 
     const url = new URL(request.url);
+
+    // TEMPORARY DEBUGGING ROUTE — remove once the YouTube live-check issue
+    // is sorted out. Runs the exact same check the cron uses, on demand,
+    // and reports each step so we can see where it's failing instead of
+    // waiting up to 5 minutes per attempt and reading logs blind.
+    // Usage: /api/debug/youtube-check?channelId=UCxxxxxxxx
+    if (url.pathname === "/api/debug/youtube-check") {
+
+      const channelId = url.searchParams.get("channelId");
+
+      if (!channelId) {
+        return Response.json({ error: "pass ?channelId=UC..." }, { status: 400 });
+      }
+
+      const res = await fetch(
+        `https://www.youtube.com/channel/${encodeURIComponent(channelId)}/live`,
+        {
+          redirect: "follow",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Cookie": "CONSENT=YES+cb; SOCS=CAI"
+          }
+        }
+      );
+
+      const html = await res.text();
+
+      const canonicalMatch = html.match(
+        /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})"/
+      );
+
+      return Response.json({
+        requestedChannelId: channelId,
+        httpStatus: res.status,
+        resolvedUrl: res.url,
+        htmlLength: html.length,
+        canonicalMatchFound: Boolean(canonicalMatch),
+        matchedVideoId: canonicalMatch ? canonicalMatch[1] : null,
+        containsIsLiveNowTrue: html.includes('"isLiveNow":true'),
+        containsIsLiveTrue: html.includes('"isLive":true'),
+        // A quick sanity check: if this is false, YouTube likely served a
+        // consent/verification page instead of the real channel page.
+        looksLikeRealChannelPage: html.includes('"channelId":"' + channelId + '"'),
+        firstThreeHundredChars: html.slice(0, 300)
+      });
+
+    }
 
     if (url.pathname === "/api/chat") {
 
