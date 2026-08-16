@@ -713,10 +713,10 @@ async function renderStreamerDirectory(container) {
         const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
 
         card.innerHTML = `
-            ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
             <strong>${streamer.name}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
             ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
+            ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
         `;
 
         grid.appendChild(card);

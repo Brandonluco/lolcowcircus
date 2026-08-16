@@ -537,6 +537,7 @@ body {
     text-decoration: none;
     color: #222;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
 }
 
 .streamer-directory-card:hover {
@@ -545,7 +546,9 @@ body {
 }
 
 .live-badge {
-    align-self: flex-start;
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -574,8 +577,8 @@ body {
 }
 
 .streamer-last-live {
-    font-size: 0.78rem;
-    color: #aaa;
+    font-size: 0.75rem;
+    color: #999;
 }
 
 .watch-live-button {
