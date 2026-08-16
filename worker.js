@@ -426,12 +426,37 @@ async function updateKickLiveStatuses(env) {
 
 }
 
+// Instagram's live flag is set by hand, with no automated check to correct
+// it — so unlike YouTube/Kick, nothing will ever turn it back off on its
+// own. This clears it automatically after 6 hours, which covers every
+// realistic Instagram Live length (most run under an hour; anyone doing
+// genuinely long broadcasts is already on YouTube or Kick, which are
+// checked for real). Prevents a forgotten toggle from showing LIVE for days.
+async function expireStaleInstagramLive(env) {
+
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+  await env.DB
+    .prepare(
+      `
+      UPDATE streamers
+      SET instagram_is_live = 0
+      WHERE instagram_is_live = 1
+      AND instagram_live_set_at < ?
+      `
+    )
+    .bind(cutoff)
+    .run();
+
+}
+
 export default {
 
   // Runs on the cron schedule defined in wrangler.toml.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(updateYoutubeLiveStatuses(env));
     ctx.waitUntil(updateKickLiveStatuses(env));
+    ctx.waitUntil(expireStaleInstagramLive(env));
   },
 
   async fetch(request, env) {
@@ -692,6 +717,33 @@ export default {
             )
             .bind(
               data.kickChannel || null,
+              data.id
+            )
+            .run();
+
+          return Response.json({ success: true });
+
+        }
+
+        // Instagram has no public API to verify live status, so this is a
+        // manual, self-reported toggle rather than something we check
+        // automatically. instagram_live_set_at gets stamped here so the
+        // cron can auto-expire it after 6 hours (see expireStaleInstagramLive)
+        // instead of it staying stuck "live" forever if it's forgotten.
+        if (data.instagramLive !== undefined) {
+
+          await env.DB
+            .prepare(
+              `
+              UPDATE streamers
+              SET instagram_is_live = ?,
+                  instagram_live_set_at = ?
+              WHERE id = ?
+              `
+            )
+            .bind(
+              data.instagramLive ? 1 : 0,
+              data.instagramLive ? new Date().toISOString() : null,
               data.id
             )
             .run();

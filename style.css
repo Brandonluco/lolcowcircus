@@ -631,6 +631,10 @@ body {
     animation: live-badge-pulse 2s ease-in-out infinite;
 }
 
+.live-badge-manual {
+    background-color: #FF9800;
+}
+
 @keyframes live-badge-pulse {
     0%, 100% {
         opacity: 1;

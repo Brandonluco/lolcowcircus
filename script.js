@@ -801,7 +801,7 @@ async function renderStreamerDirectory(container) {
 
     container.insertAdjacentHTML(
         "beforeend",
-        `<p class="live-badge-disclaimer">🔴 LIVE badges are most reliable for Kick. YouTube (and any non-Kick platform) relies on an unofficial method to detect live status, so it can occasionally be a few minutes delayed or incorrect.</p>`
+        `<p class="live-badge-disclaimer">🔴 LIVE badges (Kick, YouTube) are checked automatically and should be accurate. 🟠 LIVE badges are reported manually for platforms with no way to check automatically (like Instagram) and clear themselves after a few hours.</p>`
     );
 
     if (streamers.length === 0) {
@@ -824,17 +824,32 @@ async function renderStreamerDirectory(container) {
 
         // Real "currently broadcasting" state (checked server-side every 5 min),
         // separate from the manual online/away/offline status above.
-        const isLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
+        const isAutoLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
+
+        // Instagram has no API to verify this — it's a manual, self-reported
+        // toggle, so it gets its own amber badge rather than the same red
+        // one used for the platforms we actually check.
+        const isManualLive = Number(streamer.instagram_is_live) === 1;
+
+        const isLive = isAutoLive || isManualLive;
 
         // Only show "last live" when they're NOT live right now — the LIVE
         // badge already covers that case, and repeating it would be noise.
         const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
 
+        let liveBadgeHtml = "";
+
+        if (isAutoLive) {
+            liveBadgeHtml = `<span class="live-badge">🔴 LIVE</span>`;
+        } else if (isManualLive) {
+            liveBadgeHtml = `<span class="live-badge live-badge-manual">🟠 LIVE</span>`;
+        }
+
         card.innerHTML = `
             <strong>${streamer.name}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
             ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
-            ${isLive ? `<span class="live-badge">🔴 LIVE</span>` : ""}
+            ${liveBadgeHtml}
         `;
 
         grid.appendChild(card);
@@ -862,6 +877,9 @@ function buildStreamerProfileUrl(streamer) {
     }
     if (platform.includes("vaughnlive") || platform.includes("vaughn live")) {
         return `https://vaughnlive.tv/${handle}`;
+    }
+    if (platform.includes("instagram")) {
+        return `https://instagram.com/${handle}`;
     }
 
     return null;

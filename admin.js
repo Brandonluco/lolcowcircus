@@ -143,6 +143,50 @@ offlineButton.addEventListener("click", async function() {
 });
 
 
+const instagramLiveOnButton = document.getElementById("instagramLiveOnButton");
+const instagramLiveOffButton = document.getElementById("instagramLiveOffButton");
+
+
+instagramLiveOnButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            instagramLive: true
+        })
+    });
+
+    await loadStreamers();
+
+});
+
+
+instagramLiveOffButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            instagramLive: false
+        })
+    });
+
+    await loadStreamers();
+
+});
+
+
 function displayStreamers() {
 
     
@@ -157,6 +201,7 @@ function displayStreamers() {
             <strong>${streamer.name}</strong>
             <p>Platform: ${streamer.platform || "(none set)"}</p>
             <p>Status: ${streamer.status}</p>
+            ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
         `;
 
         const actionsRow = document.createElement("div");
