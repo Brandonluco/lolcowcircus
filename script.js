@@ -439,6 +439,52 @@ else {
     lastScroll = currentScroll;
 });
 
+function attachArticleSearch(container, placeholder) {
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "article-search-wrapper";
+
+    wrapper.innerHTML = `
+        <input
+            type="text"
+            class="article-search-input"
+            placeholder="${placeholder}"
+        >
+        <p class="article-search-empty" style="display:none;">No articles match your search.</p>
+    `;
+
+    container.appendChild(wrapper);
+
+    const input = wrapper.querySelector(".article-search-input");
+    const emptyMessage = wrapper.querySelector(".article-search-empty");
+
+    input.addEventListener("input", () => {
+
+        const query = input.value.trim().toLowerCase();
+        const posts = container.querySelectorAll(".blog-post");
+
+        let visibleCount = 0;
+
+        posts.forEach((post) => {
+
+            const matches = !query || (post.dataset.searchText || "").includes(query);
+
+            post.style.display = matches ? "" : "none";
+
+            if (matches) {
+                visibleCount++;
+            }
+
+        });
+
+        emptyMessage.style.display = (query && visibleCount === 0) ? "" : "none";
+
+    });
+
+    return wrapper;
+
+}
+
 function renderArticleSkeletons(container, count) {
 
     for (let i = 0; i < count; i++) {
@@ -531,6 +577,10 @@ async function loadArticles() {
 
         container.innerHTML = "";
 
+        if (savedArticles.length > 0) {
+            attachArticleSearch(container, "Search articles by title or streamer...");
+        }
+
     }
 
 savedArticles.forEach((article) => {
@@ -552,6 +602,8 @@ function createArticleCard(article) {
         post.classList.add("blog-post");
 
         post.dataset.articleId = article.id;
+
+        post.dataset.searchText = `${article.title || ""} ${article.streamerName || ""}`.toLowerCase();
 
         post.innerHTML = `
             <header class="post-header">
@@ -833,6 +885,10 @@ async function renderStreamerArticles(container, slug) {
     if (articles.length === 0) {
         container.insertAdjacentHTML("beforeend", `<p class="no-comments">No articles about ${escapeForDisplay(streamer.name)} yet — check back soon.</p>`);
         return;
+    }
+
+    if (articles.length > 3) {
+        attachArticleSearch(container, `Search ${streamer.name}'s articles...`);
     }
 
     articles.forEach((article) => {
