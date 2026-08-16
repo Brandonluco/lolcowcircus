@@ -422,57 +422,6 @@ export default {
 
     const url = new URL(request.url);
 
-    // TEMPORARY DEBUGGING ROUTE — remove once the YouTube live-check is
-    // confirmed working. Runs the same lookup the cron uses, on demand, and
-    // reports each step so we can see the raw API responses instead of
-    // waiting up to 5 minutes per attempt and reading logs blind.
-    // Usage: /api/debug/youtube-check?channelId=UCxxxxxxxx
-    if (url.pathname === "/api/debug/youtube-check") {
-
-      const channelId = url.searchParams.get("channelId");
-
-      if (!channelId) {
-        return Response.json({ error: "pass ?channelId=UC..." }, { status: 400 });
-      }
-
-      if (!env.YOUTUBE_API_KEY) {
-        return Response.json({ error: "YOUTUBE_API_KEY is not set as a Worker secret" }, { status: 500 });
-      }
-
-      const uploadsPlaylistId = "UU" + channelId.slice(2);
-
-      const playlistRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId=${encodeURIComponent(uploadsPlaylistId)}&key=${env.YOUTUBE_API_KEY}`
-      );
-
-      const playlistData = await playlistRes.json();
-
-      const latestVideoId = playlistData.items?.[0]?.snippet?.resourceId?.videoId || null;
-
-      let videoData = null;
-
-      if (latestVideoId) {
-
-        const videoRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(latestVideoId)}&key=${env.YOUTUBE_API_KEY}`
-        );
-
-        videoData = await videoRes.json();
-
-      }
-
-      return Response.json({
-        requestedChannelId: channelId,
-        derivedUploadsPlaylistId: uploadsPlaylistId,
-        playlistHttpStatus: playlistRes.status,
-        playlistApiError: playlistData.error || null,
-        latestVideoId: latestVideoId,
-        videoApiError: videoData?.error || null,
-        liveBroadcastContent: videoData?.items?.[0]?.snippet?.liveBroadcastContent || null
-      });
-
-    }
-
     if (url.pathname === "/api/chat") {
 
   const id = env.CHAT_ROOM.idFromName("main");
