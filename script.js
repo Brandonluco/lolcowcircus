@@ -124,6 +124,18 @@ async function sendMessage() {
     });
 
 
+  if (response.status === 429) {
+
+    chatCharCount.textContent = "Slow down a bit — try again in a few seconds";
+
+    setTimeout(function () {
+        chatCharCount.textContent = `${messageInput.value.length} / 500`;
+    }, 3000);
+
+    return;
+
+  }
+
   if (response.ok) {
 
     socket.send(JSON.stringify(commentData));
@@ -1007,6 +1019,11 @@ articlesContainer.addEventListener("click", async function (event) {
             return;
         }
 
+        if (replyResponse.status === 429) {
+            alert("You're posting too fast — wait a few seconds and try again.");
+            return;
+        }
+
         if (replyResponse.ok) {
             await loadArticleComments(articleId);
         }
@@ -1058,6 +1075,11 @@ articlesContainer.addEventListener("click", async function (event) {
 
     if (response.status === 403) {
         alert("You've been blocked from posting comments.");
+        return;
+    }
+
+    if (response.status === 429) {
+        alert("You're posting too fast — wait a few seconds and try again.");
         return;
     }
 

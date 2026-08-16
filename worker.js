@@ -3,6 +3,12 @@ export class ChatRoom {
     this.state = state;
     this.env = env;
     this.sessions = new Set();
+    // In-memory per-IP cooldown for this room. This is separate from the
+    // /api/comments throttle because someone can open a websocket connection
+    // directly (skipping the REST endpoint and its client entirely) and
+    // spam messages straight into this handler, which otherwise rebroadcasts
+    // anything it receives with no limit at all.
+    this.lastMessageAt = new Map();
   }
 
   async fetch(request) {
@@ -13,6 +19,8 @@ export class ChatRoom {
         status: 400
       });
     }
+
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
     const pair = new WebSocketPair();
 
@@ -35,6 +43,18 @@ server.addEventListener("error", () => {
 });
 
 server.addEventListener("message", (event) => {
+
+    const now = Date.now();
+    const last = this.lastMessageAt.get(ip) || 0;
+
+    // Same 3s window as the /api/comments cooldown, so this can't be used
+    // as a side door around it.
+    if (now - last < 3000) {
+      console.log("Dropped chat message from", ip, "- rate limited");
+      return;
+    }
+
+    this.lastMessageAt.set(ip, now);
 
     console.log("Broadcasting:", event.data);
 
@@ -131,6 +151,42 @@ function escapeHtml(str) {
 function sanitizeColor(color) {
 
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#8B5A2B";
+
+}
+
+// Simple per-IP cooldown so one visitor can't flood chat/comments faster
+// than a person realistically types. Stores one row per (ip, action) pair
+// with the timestamp of their last accepted post; a new post from the same
+// IP within the cooldown window gets rejected instead of inserted.
+// `action` keeps chat, article comments, etc. on separate cooldowns so
+// posting in one doesn't eat into the other's allowance.
+async function isRateLimited(env, ip, action, cooldownSeconds) {
+
+  const now = Date.now();
+
+  const existing = await env.DB
+    .prepare(
+      "SELECT last_posted_at FROM rate_limits WHERE ip_address = ? AND action = ?"
+    )
+    .bind(ip, action)
+    .first();
+
+  if (existing && now - existing.last_posted_at < cooldownSeconds * 1000) {
+    return true;
+  }
+
+  await env.DB
+    .prepare(
+      `
+      INSERT INTO rate_limits (ip_address, action, last_posted_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT (ip_address, action) DO UPDATE SET last_posted_at = excluded.last_posted_at
+      `
+    )
+    .bind(ip, action, now)
+    .run();
+
+  return false;
 
 }
 
@@ -385,6 +441,17 @@ export default {
 
       // POST comment
       if (request.method === "POST") {
+
+        const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+
+        if (await isRateLimited(env, ip, "comment", 3)) {
+
+          return Response.json(
+            { error: "rate_limited" },
+            { status: 429 }
+          );
+
+        }
 
         const data = await request.json();
 
@@ -822,6 +889,15 @@ export default {
           return Response.json(
             { error: "banned" },
             { status: 403 }
+          );
+
+        }
+
+        if (await isRateLimited(env, ip, "article_comment", 8)) {
+
+          return Response.json(
+            { error: "rate_limited" },
+            { status: 429 }
           );
 
         }
