@@ -190,72 +190,70 @@ async function isRateLimited(env, ip, action, cooldownSeconds) {
 
 }
 
-// Checks whether a YouTube channel is currently live by following the
-// channel's /live redirect (the same page a real visitor's browser loads),
-// then confirming the resolved page is actually an active broadcast.
-// No API key, no quota — just an ordinary fetch.
-async function checkYoutubeLive(channelId) {
+// Checks whether a YouTube channel is currently live using the official
+// YouTube Data API v3 instead of scraping the channel page. Uses the
+// "uploads playlist" trick to keep this cheap: a channel's uploads playlist
+// ID is always its channel ID with the leading "UC" swapped for "UU", so we
+// can skip an extra channels.list call entirely. Total cost per check is
+// ~2 quota units (1 for the playlist lookup, 1 for the video's own status) —
+// well within the free 10,000 units/day, versus 100 units for a single
+// search.list call.
+async function checkYoutubeLive(channelId, env) {
+
+  if (!env.YOUTUBE_API_KEY) {
+    console.log("YOUTUBE_API_KEY not set — skipping YouTube live check");
+    return null;
+  }
+
+  if (!channelId.startsWith("UC")) {
+    // Not a standard channel ID — can't derive the uploads playlist ID this way.
+    console.log(`YouTube check skipped for ${channelId}: not a UC... channel ID`);
+    return null;
+  }
+
+  const uploadsPlaylistId = "UU" + channelId.slice(2);
 
   try {
 
-    const res = await fetch(
-      `https://www.youtube.com/channel/${encodeURIComponent(channelId)}/live`,
-      {
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          // Without this, YouTube can route automated-looking requests
-          // through a cookie consent page instead of the actual channel
-          // page, which silently breaks this whole approach (no error,
-          // just never finds a match). This tells YouTube consent is
-          // already handled, same as a browser that already clicked through it.
-          "Cookie": "CONSENT=YES+cb; SOCS=CAI"
-        }
-      }
+    // 1 unit — the most recent video they've published (a livestream shows
+    // up here the moment it starts, same as a regular upload would).
+    const playlistRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId=${encodeURIComponent(uploadsPlaylistId)}&key=${env.YOUTUBE_API_KEY}`
     );
 
-    console.log(`YouTube check for ${channelId}: status=${res.status} resolvedUrl=${res.url}`);
+    const playlistData = await playlistRes.json();
 
-    if (!res.ok) {
+    if (!playlistRes.ok) {
+      console.log(`YouTube playlistItems failed for ${channelId}: status=${playlistRes.status} error=${JSON.stringify(playlistData.error)}`);
       return null;
     }
 
-    const html = await res.text();
+    const latestVideoId = playlistData.items?.[0]?.snippet?.resourceId?.videoId;
 
-    // YouTube's /live URL no longer reliably redirects to /watch?v=... in
-    // the response URL — it can return 200 on the /live URL itself. So we
-    // read the actual video ID out of the page's own canonical link instead
-    // of relying on the URL changing.
-    const canonicalMatch = html.match(
-      /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})"/
-    );
-
-    if (!canonicalMatch) {
-      // Page isn't pointing at a specific video at all — not live.
+    if (!latestVideoId) {
       return null;
     }
 
-    const videoId = canonicalMatch[1];
+    // 1 unit — read that video's actual broadcast status directly from
+    // YouTube's own data instead of guessing from page HTML.
+    const videoRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(latestVideoId)}&key=${env.YOUTUBE_API_KEY}`
+    );
 
-    // Searching the whole page for "isLiveNow":true is too broad — this page
-    // also lists recommended/related videos, and if any of those happen to
-    // be live right now, that text shows up on the page even though THIS
-    // channel isn't live. Scope the check to a window right after this
-    // specific video's own ID (where its videoDetails JSON lives) instead
-    // of the entire page.
-    const videoIdIndex = html.indexOf(`"videoId":"${videoId}"`);
+    const videoData = await videoRes.json();
 
-    let isLive = false;
-
-    if (videoIdIndex !== -1) {
-      const nearby = html.slice(videoIdIndex, videoIdIndex + 2000);
-      isLive = nearby.includes('"isLiveNow":true') || nearby.includes('"isLive":true');
+    if (!videoRes.ok) {
+      console.log(`YouTube videos.list failed for ${channelId}: status=${videoRes.status} error=${JSON.stringify(videoData.error)}`);
+      return null;
     }
 
-    console.log(`YouTube check for ${channelId}: videoId=${videoId} isLive=${isLive}`);
+    // liveBroadcastContent is "live", "upcoming", or "none" — straight from
+    // YouTube, not inferred.
+    const liveBroadcastContent = videoData.items?.[0]?.snippet?.liveBroadcastContent;
 
-    return isLive ? videoId : null;
+    console.log(`YouTube check for ${channelId}: videoId=${latestVideoId} liveBroadcastContent=${liveBroadcastContent}`);
+
+    return liveBroadcastContent === "live" ? latestVideoId : null;
 
   } catch (err) {
 
@@ -283,7 +281,7 @@ async function updateYoutubeLiveStatuses(env) {
 
   for (const streamer of results) {
 
-    const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id);
+    const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id, env);
 
     await env.DB
       .prepare(
@@ -424,9 +422,9 @@ export default {
 
     const url = new URL(request.url);
 
-    // TEMPORARY DEBUGGING ROUTE — remove once the YouTube live-check issue
-    // is sorted out. Runs the exact same check the cron uses, on demand,
-    // and reports each step so we can see where it's failing instead of
+    // TEMPORARY DEBUGGING ROUTE — remove once the YouTube live-check is
+    // confirmed working. Runs the same lookup the cron uses, on demand, and
+    // reports each step so we can see the raw API responses instead of
     // waiting up to 5 minutes per attempt and reading logs blind.
     // Usage: /api/debug/youtube-check?channelId=UCxxxxxxxx
     if (url.pathname === "/api/debug/youtube-check") {
@@ -437,37 +435,40 @@ export default {
         return Response.json({ error: "pass ?channelId=UC..." }, { status: 400 });
       }
 
-      const res = await fetch(
-        `https://www.youtube.com/channel/${encodeURIComponent(channelId)}/live`,
-        {
-          redirect: "follow",
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Cookie": "CONSENT=YES+cb; SOCS=CAI"
-          }
-        }
+      if (!env.YOUTUBE_API_KEY) {
+        return Response.json({ error: "YOUTUBE_API_KEY is not set as a Worker secret" }, { status: 500 });
+      }
+
+      const uploadsPlaylistId = "UU" + channelId.slice(2);
+
+      const playlistRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId=${encodeURIComponent(uploadsPlaylistId)}&key=${env.YOUTUBE_API_KEY}`
       );
 
-      const html = await res.text();
+      const playlistData = await playlistRes.json();
 
-      const canonicalMatch = html.match(
-        /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})"/
-      );
+      const latestVideoId = playlistData.items?.[0]?.snippet?.resourceId?.videoId || null;
+
+      let videoData = null;
+
+      if (latestVideoId) {
+
+        const videoRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(latestVideoId)}&key=${env.YOUTUBE_API_KEY}`
+        );
+
+        videoData = await videoRes.json();
+
+      }
 
       return Response.json({
         requestedChannelId: channelId,
-        httpStatus: res.status,
-        resolvedUrl: res.url,
-        htmlLength: html.length,
-        canonicalMatchFound: Boolean(canonicalMatch),
-        matchedVideoId: canonicalMatch ? canonicalMatch[1] : null,
-        containsIsLiveNowTrue: html.includes('"isLiveNow":true'),
-        containsIsLiveTrue: html.includes('"isLive":true'),
-        // A quick sanity check: if this is false, YouTube likely served a
-        // consent/verification page instead of the real channel page.
-        looksLikeRealChannelPage: html.includes('"channelId":"' + channelId + '"'),
-        firstThreeHundredChars: html.slice(0, 300)
+        derivedUploadsPlaylistId: uploadsPlaylistId,
+        playlistHttpStatus: playlistRes.status,
+        playlistApiError: playlistData.error || null,
+        latestVideoId: latestVideoId,
+        videoApiError: videoData?.error || null,
+        liveBroadcastContent: videoData?.items?.[0]?.snippet?.liveBroadcastContent || null
       });
 
     }
