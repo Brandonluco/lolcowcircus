@@ -496,10 +496,36 @@ body {
     border-radius: 8px;
 }
 
+.article-image-excerpt {
+    max-width: 400px;
+    margin: 16px 0;
+}
+
+.blog-post-excerpt .post-content p {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+}
+
+.read-more-link {
+    display: inline-block;
+    font-weight: 700;
+    color: #222;
+    text-decoration: none;
+}
+
+.read-more-link:hover {
+    text-decoration: underline;
+}
+
 .blog-post {
     padding-bottom: 40px;
     margin-bottom: 40px;
     border-bottom: 2px solid #eaeaea;
+}
+
+.blog-post-excerpt {
+    padding-bottom: 25px;
+    margin-bottom: 25px;
 }
 
 .streamer-badge {

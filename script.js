@@ -585,25 +585,86 @@ async function loadArticles() {
 
 savedArticles.forEach((article) => {
 
-        const post = createArticleCard(article);
+        const post = createArticleCard(article, { excerpt: !singleArticleSlug });
 
         container.appendChild(post);
 
-        loadArticleComments(article.id);
+        // In excerpt mode the comments section isn't rendered at all, so
+        // there's nothing to load into — and no point spending a fetch on it.
+        if (singleArticleSlug) {
+            loadArticleComments(article.id);
+        }
 
     });
 
 }
 
-function createArticleCard(article) {
+function truncateText(text, maxLength) {
+
+    if (!text || text.length <= maxLength) {
+        return text || "";
+    }
+
+    const cut = text.slice(0, maxLength);
+    const lastSpace = cut.lastIndexOf(" ");
+
+    return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut) + "…";
+
+}
+
+function createArticleCard(article, options = {}) {
+
+        const excerpt = Boolean(options.excerpt);
 
         const post = document.createElement("article");
 
         post.classList.add("blog-post");
 
+        if (excerpt) {
+            post.classList.add("blog-post-excerpt");
+        }
+
         post.dataset.articleId = article.id;
 
         post.dataset.searchText = `${article.title || ""} ${article.streamerName || ""}`.toLowerCase();
+
+        // Feed views (homepage, streamer pages) show a trimmed preview with a
+        // Read More link instead of the full article — image included, since
+        // that's what actually catches a scrolling eye, but no video embed,
+        // bottom paragraph, or comments until someone clicks through.
+        if (excerpt) {
+
+            post.innerHTML = `
+                <header class="post-header">
+                    <h1 class="post-title">
+                        <a href="/article/${article.slug}" class="post-title-link">${article.title}</a>
+                    </h1>
+
+                    ${article.streamerSlug ? `
+                    <a href="/streamer/${article.streamerSlug}" class="streamer-badge">
+                        📺 ${article.streamerName}
+                    </a>
+                    ` : ""}
+
+                    <div class="post-meta">
+                        ${article.date}
+                    </div>
+                </header>
+
+                <div class="post-content">
+
+                    ${article.image ? `<img src="${article.image}" class="article-image article-image-excerpt">` : ""}
+
+                    <p class="article-text">${truncateText(article.contentTop, 220)}</p>
+
+                    <a href="/article/${article.slug}" class="read-more-link">Read More →</a>
+
+                </div>
+            `;
+
+            return post;
+
+        }
 
         post.innerHTML = `
             <header class="post-header">
@@ -892,9 +953,8 @@ async function renderStreamerArticles(container, slug) {
     }
 
     articles.forEach((article) => {
-        const post = createArticleCard(article);
+        const post = createArticleCard(article, { excerpt: true });
         container.appendChild(post);
-        loadArticleComments(article.id);
     });
 
 }
