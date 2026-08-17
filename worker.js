@@ -725,6 +725,35 @@ export default {
 
         }
 
+        // Only one streamer can be pinned as featured at a time, so setting
+        // one clears any previous pin first rather than requiring the admin
+        // to manually unpin the old one.
+        if (data.featuredPinned !== undefined) {
+
+          if (data.featuredPinned) {
+
+            await env.DB
+              .prepare("UPDATE streamers SET featured_pinned = 0")
+              .run();
+
+            await env.DB
+              .prepare("UPDATE streamers SET featured_pinned = 1 WHERE id = ?")
+              .bind(data.id)
+              .run();
+
+          } else {
+
+            await env.DB
+              .prepare("UPDATE streamers SET featured_pinned = 0 WHERE id = ?")
+              .bind(data.id)
+              .run();
+
+          }
+
+          return Response.json({ success: true });
+
+        }
+
         // Instagram has no public API to verify live status, so this is a
         // manual, self-reported toggle rather than something we check
         // automatically. instagram_live_set_at gets stamped here so the

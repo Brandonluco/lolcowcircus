@@ -262,6 +262,53 @@ body {
     line-height: 1.5;
 }
 
+.featured-streamer {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 35px;
+}
+
+.featured-streamer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.featured-streamer-label {
+    background-color: #e74c3c;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    animation: live-badge-pulse 2s ease-in-out infinite;
+}
+
+.featured-streamer-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #222;
+    text-decoration: none;
+}
+
+.featured-streamer-name:hover {
+    text-decoration: underline;
+}
+
+.featured-streamer .video-container {
+    margin: 15px 0 5px;
+}
+
+.featured-mute-note {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0;
+}
+
 /* ==========================================================================
    5. SITE FOOTER
    ========================================================================== */

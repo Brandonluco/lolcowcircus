@@ -527,6 +527,109 @@ function renderCommentSkeletons(list, count) {
 
 }
 
+// Only YouTube (real video ID from the cron check) and Kick have anything
+// embeddable — Instagram's live flag is self-reported with no video source
+// to actually show, so it's never eligible to be featured here even while
+// marked live.
+function isEmbeddableLive(streamer) {
+
+    const platform = (streamer.platform || "").toLowerCase();
+
+    if (platform.includes("kick") && Number(streamer.kick_is_live) === 1) {
+        return true;
+    }
+
+    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
+        return true;
+    }
+
+    return false;
+
+}
+
+async function loadFeaturedStreamer() {
+
+    const container = document.getElementById("featured-streamer-container");
+
+    if (!container) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/streamers");
+        const streamers = await response.json();
+
+        const eligible = streamers.filter(isEmbeddableLive);
+
+        if (eligible.length === 0) {
+            container.innerHTML = "";
+            return;
+        }
+
+        // A manual pin wins, but only while that streamer is actually live —
+        // otherwise it falls back to whoever's live, lowest streamer ID first.
+        const pinned = eligible.find((streamer) => Number(streamer.featured_pinned) === 1);
+
+        const featured = pinned || eligible.sort((a, b) => a.id - b.id)[0];
+
+        container.innerHTML = `
+            <section class="featured-streamer">
+                <div class="featured-streamer-header">
+                    <span class="featured-streamer-label">🔴 Featured Now</span>
+                    <a href="/streamer/${featured.slug}" class="featured-streamer-name">${escapeForDisplay(featured.name)}</a>
+                </div>
+                ${renderFeaturedStreamerEmbed(featured)}
+            </section>
+        `;
+
+    } catch (err) {
+
+        console.log("Failed to load featured streamer:", err.message);
+        container.innerHTML = "";
+
+    }
+
+}
+
+// Separate from renderStreamerWatchBlock (used on a streamer's own page)
+// because autoplay only makes sense here — nobody wants a stream on
+// someone's dedicated page blasting sound the moment it loads, but the
+// whole point of the homepage banner is that it plays without a click.
+// Muted autoplay is the only kind browsers reliably allow.
+function renderFeaturedStreamerEmbed(streamer) {
+
+    const platform = (streamer.platform || "").toLowerCase();
+
+    if (platform.includes("kick")) {
+
+        const kickUsername = streamer.kick_channel || streamer.channel;
+
+        return `
+            <div class="video-container">
+                <iframe src="https://player.kick.com/${encodeURIComponent(kickUsername)}"
+                    frameborder="0" scrolling="no" allowfullscreen></iframe>
+            </div>
+        `;
+
+    }
+
+    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
+
+        return `
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}?autoplay=1&mute=1"
+                    frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            </div>
+            <p class="featured-mute-note">🔇 Playing muted — click the video to unmute.</p>
+        `;
+
+    }
+
+    return "";
+
+}
+
 async function loadArticles() {
 
     const container = document.getElementById("articles-container");
@@ -546,6 +649,13 @@ async function loadArticles() {
     }
 
     const singleArticleSlug = window.SINGLE_ARTICLE_SLUG || null;
+
+    // The featured streamer banner is homepage-only — this same template is
+    // reused for article/streamer pages via injected window globals, so
+    // this branch is the one true "nothing else claimed this page" case.
+    if (!singleArticleSlug) {
+        loadFeaturedStreamer();
+    }
 
     renderArticleSkeletons(container, singleArticleSlug ? 1 : 3);
 
@@ -917,7 +1027,7 @@ function renderStreamerWatchBlock(streamer) {
                 <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}"
                     frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
-            <p class="embed-reliability-note">Live detection for YouTube can occasionally lag or misfire since it relies on an unofficial method. If this looks wrong, try refreshing the page.</p>
+            <p class="embed-reliability-note">Live status updates roughly every 5 minutes. If this looks wrong, try refreshing the page.</p>
         `;
     }
 

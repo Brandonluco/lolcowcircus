@@ -187,6 +187,50 @@ instagramLiveOffButton.addEventListener("click", async function() {
 });
 
 
+const setFeaturedButton = document.getElementById("setFeaturedButton");
+const unsetFeaturedButton = document.getElementById("unsetFeaturedButton");
+
+
+setFeaturedButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            featuredPinned: true
+        })
+    });
+
+    await loadStreamers();
+
+});
+
+
+unsetFeaturedButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            featuredPinned: false
+        })
+    });
+
+    await loadStreamers();
+
+});
+
+
 function displayStreamers() {
 
     
@@ -202,6 +246,7 @@ function displayStreamers() {
             <p>Platform: ${streamer.platform || "(none set)"}</p>
             <p>Status: ${streamer.status}</p>
             ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
+            ${Number(streamer.featured_pinned) === 1 ? `<p>📌 Pinned as homepage featured streamer</p>` : ""}
         `;
 
         const actionsRow = document.createElement("div");
