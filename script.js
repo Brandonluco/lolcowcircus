@@ -1,4 +1,31 @@
 const messageInput = document.getElementById("message-input");
+
+// Pulls the video ID out of a YouTube URL regardless of which format got
+// pasted into the article's YouTube field — embed link (the one we ask
+// for), a regular watch link, or a shortened youtu.be link. Used to build
+// a thumbnail image for the homepage feed without needing a second field
+// or a heavy iframe on every excerpt card.
+function getYoutubeVideoId(url) {
+
+    if (!url) {
+        return null;
+    }
+
+    const match = url.match(
+        /(?:youtube\.com\/(?:embed\/|watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+    );
+
+    return match ? match[1] : null;
+
+}
+
+function getYoutubeThumbnailUrl(embedUrl) {
+
+    const videoId = getYoutubeVideoId(embedUrl);
+
+    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+
+}
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-messages");
 const newMessageAlert = document.getElementById("new-message-alert");
@@ -798,7 +825,24 @@ function createArticleCard(article, options = {}) {
 
                 <div class="post-content">
 
-                    ${article.image ? `<img src="${article.image}" class="article-image article-image-excerpt">` : ""}
+                    ${(() => {
+                        const thumbnailUrl = getYoutubeThumbnailUrl(article.youtube);
+
+                        if (thumbnailUrl) {
+                            return `
+                                <a href="/article/${article.slug}" class="article-video-thumbnail-link">
+                                    <img src="${thumbnailUrl}" class="article-image article-image-excerpt">
+                                    <span class="play-button-overlay">▶</span>
+                                </a>
+                            `;
+                        }
+
+                        if (article.image) {
+                            return `<img src="${article.image}" class="article-image article-image-excerpt">`;
+                        }
+
+                        return "";
+                    })()}
 
                     <p class="article-text">${truncateText(article.contentTop, 220)}</p>
 
@@ -837,8 +881,6 @@ function createArticleCard(article, options = {}) {
 
                 <p class="article-text">${article.contentTop}</p>
 
-                ${article.image ? `<img src="${article.image}" class="article-image">` : ""}
-
 ${article.youtube ? `
 <div class="video-container">
     <iframe 
@@ -849,6 +891,8 @@ ${article.youtube ? `
     </iframe>
 </div>
 ` : ""}
+
+${article.image ? `<img src="${article.image}" class="article-image">` : ""}
 
 <p class="article-text">${article.contentBottom}</p>
 
