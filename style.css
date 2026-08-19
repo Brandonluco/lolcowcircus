@@ -327,6 +327,8 @@ body {
 
     position: sticky;
     top: 80px;
+
+    align-self: start;
 }
 .chat{
     background-color: #ffffff;
