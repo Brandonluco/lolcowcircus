@@ -1,8 +1,22 @@
+// Hard ceiling on how many chat connections this single shared room will
+// ever hold at once, regardless of who they're from. This is the backstop
+// against a flood taking the whole room down for every visitor.
+const MAX_TOTAL_SESSIONS = 500;
+
+// How many concurrent connections a single IP may hold open at once. This
+// is separate from the per-message rate limit below — that only throttles
+// how often an already-open connection can *send*, it does nothing to stop
+// one IP from opening hundreds of connections and just holding them open.
+const MAX_SESSIONS_PER_IP = 20;
+
 export class ChatRoom {
   constructor(state, env) {
     this.state = state;
     this.env = env;
     this.sessions = new Set();
+    // Tracks how many open sessions belong to each IP, so we can enforce
+    // MAX_SESSIONS_PER_IP without scanning this.sessions on every connect.
+    this.sessionCountByIp = new Map();
     // In-memory per-IP cooldown for this room. This is separate from the
     // /api/comments throttle because someone can open a websocket connection
     // directly (skipping the REST endpoint and its client entirely) and
@@ -22,6 +36,26 @@ export class ChatRoom {
 
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
+    // Reject outright, before ever accepting the socket, if either cap is
+    // already at its limit. This is what actually stops a flood: a rejected
+    // connection costs almost nothing, an accepted one that has to be torn
+    // down later already did its damage.
+    if (this.sessions.size >= MAX_TOTAL_SESSIONS) {
+      console.log("Rejected connection from", ip, "- room is full");
+      return new Response("Chat room is full, try again shortly", {
+        status: 503
+      });
+    }
+
+    const ipCount = this.sessionCountByIp.get(ip) || 0;
+
+    if (ipCount >= MAX_SESSIONS_PER_IP) {
+      console.log("Rejected connection from", ip, "- too many open connections from this IP");
+      return new Response("Too many open connections from this address", {
+        status: 429
+      });
+    }
+
     const pair = new WebSocketPair();
 
     const [client, server] = Object.values(pair);
@@ -29,17 +63,35 @@ export class ChatRoom {
     server.accept();
 
     this.sessions.add(server);
+    this.sessionCountByIp.set(ip, ipCount + 1);
+
+    // "close" and "error" can both fire for the same socket in some cases,
+    // so make cleanup idempotent — only release the IP's slot the first time.
+    let released = false;
+
+    const releaseSession = () => {
+      if (released) {
+        return;
+      }
+      released = true;
+
+      this.sessions.delete(server);
+
+      const current = this.sessionCountByIp.get(ip) || 0;
+      if (current <= 1) {
+        this.sessionCountByIp.delete(ip);
+      } else {
+        this.sessionCountByIp.set(ip, current - 1);
+      }
+    };
 
     server.addEventListener("error", (event) => {
   console.log("WebSocket error:", event);
+  releaseSession();
 });
 
     server.addEventListener("close", () => {
-  this.sessions.delete(server);
-});
-
-server.addEventListener("error", () => {
-  this.sessions.delete(server);
+  releaseSession();
 });
 
 server.addEventListener("message", (event) => {
