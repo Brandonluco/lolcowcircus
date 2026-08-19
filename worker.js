@@ -440,7 +440,7 @@ async function updateKickLiveStatuses(env) {
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, channel, kick_channel FROM streamers
+      SELECT id, channel, kick_channel, kick_is_live FROM streamers
       WHERE platform LIKE '%kick%'
       `
     )
@@ -468,6 +468,15 @@ async function updateKickLiveStatuses(env) {
     }
 
     const isLive = await checkKickLive(slug, token);
+
+    // Same fix as the YouTube check: skip the write entirely when nothing
+    // changed since last time, instead of writing a row every 5 minutes
+    // for every Kick streamer regardless of whether their status moved.
+    const wasLive = Boolean(streamer.kick_is_live);
+
+    if (isLive === wasLive) {
+      continue;
+    }
 
     const now = new Date().toISOString();
 
