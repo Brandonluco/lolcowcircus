@@ -29,6 +29,10 @@ const cancelEdit = document.getElementById("cancelEdit");
 const editingStatus = document.getElementById("editingStatus");
 const articleCommentList = document.getElementById("articleCommentList");
 const bannedIpList = document.getElementById("bannedIpList");
+const featuredVideoTitle = document.getElementById("featuredVideoTitle");
+const featuredVideoEmbed = document.getElementById("featuredVideoEmbed");
+const addFeaturedVideo = document.getElementById("addFeaturedVideo");
+const featuredVideoList = document.getElementById("featuredVideoList");
 
 
 function escapeForDisplay(str) {
@@ -361,6 +365,61 @@ async function displayCurrentAlert() {
     currentAlert.style.color = "white";
 
 }
+
+async function loadFeaturedVideos() {
+
+    const response = await fetch("/api/featured-videos");
+
+    const videos = await response.json();
+
+    if (videos.length === 0) {
+        featuredVideoList.innerHTML = "<p>No featured videos yet.</p>";
+        return;
+    }
+
+    featuredVideoList.innerHTML = videos.map(video => `
+        <div class="admin-article-card">
+            <strong>${escapeForDisplay(video.title || "(untitled)")}</strong>
+            <p>${escapeForDisplay(video.embed_url)}</p>
+            <button onclick="deleteFeaturedVideo(${video.id})">Remove</button>
+        </div>
+    `).join("");
+
+}
+
+async function deleteFeaturedVideo(id) {
+
+    await fetch(`/api/featured-videos/${id}`, {
+        method: "DELETE"
+    });
+
+    loadFeaturedVideos();
+
+}
+
+addFeaturedVideo.addEventListener("click", async function() {
+
+    if (!featuredVideoEmbed.value) {
+        return;
+    }
+
+    await fetch("/api/featured-videos", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            title: featuredVideoTitle.value,
+            embed_url: featuredVideoEmbed.value
+        })
+    });
+
+    featuredVideoTitle.value = "";
+    featuredVideoEmbed.value = "";
+
+    loadFeaturedVideos();
+
+});
 
 function displayArticles() {
 
@@ -812,5 +871,6 @@ async function unbanIp(ip) {
 loadStreamers();
 displayCurrentAlert();
 loadArticles();
+loadFeaturedVideos();
 displayArticleComments();
 displayBannedIps();

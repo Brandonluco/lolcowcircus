@@ -421,6 +421,41 @@ async function loadAlert() {
 
 loadAlert();
 
+async function loadFeaturedVideos() {
+
+    const response = await fetch("/api/featured-videos");
+
+    const videos = await response.json();
+
+    const list = document.getElementById("featured-videos-list");
+
+    if (!list) {
+        return;
+    }
+
+    if (!videos || videos.length === 0) {
+
+        list.innerHTML = `<p class="featured-videos-empty">No featured videos right now.</p>`;
+
+        return;
+
+    }
+
+    list.innerHTML = videos.map(video => `
+        <div class="featured-video-item">
+            <div class="video-container">
+                <iframe src="${video.embed_url}"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+            </div>
+            ${video.title ? `<p class="featured-video-title">${video.title}</p>` : ""}
+        </div>
+    `).join("");
+
+}
+
+loadFeaturedVideos();
+
 
 const header = document.querySelector(".site-header");
 

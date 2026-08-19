@@ -323,7 +323,7 @@ async function updateYoutubeLiveStatuses(env) {
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, embed_channel_id FROM streamers
+      SELECT id, embed_channel_id, youtube_live_video_id FROM streamers
       WHERE platform LIKE '%youtube%'
       AND embed_channel_id IS NOT NULL
       AND embed_channel_id != ''
@@ -334,6 +334,16 @@ async function updateYoutubeLiveStatuses(env) {
   for (const streamer of results) {
 
     const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id, env);
+
+    // Skip the write entirely if nothing changed since last check. This is
+    // the common case (a streamer isn't live most of the time), so this
+    // cuts the row-write cost of this cron job down to roughly "once per
+    // streamer per time their live status actually flips", instead of
+    // once per streamer every single time the cron runs (every 5 minutes,
+    // 288 times a day, forever, regardless of whether anything changed).
+    if ((liveVideoId || null) === (streamer.youtube_live_video_id || null)) {
+      continue;
+    }
 
     const now = new Date().toISOString();
 
@@ -645,6 +655,79 @@ export default {
         });
 
       }
+
+    }
+
+
+    // =====================
+    // FEATURED VIDEOS API
+    // =====================
+
+    if (url.pathname === "/api/featured-videos") {
+
+      // GET all featured videos
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM featured_videos ORDER BY id DESC"
+          )
+          .all();
+
+        return Response.json(results);
+
+      }
+
+
+      // POST new featured video
+      if (request.method === "POST") {
+
+        const data = await request.json();
+
+        if (!data.embed_url) {
+          return Response.json({
+            error: "embed_url is required"
+          }, {
+            status: 400
+          });
+        }
+
+        await env.DB
+          .prepare(
+            "INSERT INTO featured_videos (embed_url, title) VALUES (?, ?)"
+          )
+          .bind(
+            data.embed_url,
+            data.title || null
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
+
+    // DELETE a single featured video by id
+    if (url.pathname.startsWith("/api/featured-videos/") && request.method === "DELETE") {
+
+      const id = url.pathname.split("/api/featured-videos/")[1];
+
+      await env.DB
+        .prepare(
+          "DELETE FROM featured_videos WHERE id = ?"
+        )
+        .bind(id)
+        .run();
+
+
+      return Response.json({
+        success: true
+      });
 
     }
 
