@@ -1292,6 +1292,14 @@ body {
     /* Right-align it within the full-width body, since it's a normal
        block-level element now rather than viewport-positioned. */
     margin: 0 24px 0 auto;
+
+    /* Sticky elements still reserve their full height in the normal
+       flow (unlike fixed, which doesn't) — without this, the page
+       would leave a 600px gap below the banner before .container
+       starts. A negative bottom margin equal to its own height pulls
+       the next element back up to close that gap, while the banner
+       itself still renders and sticks completely normally. */
+    margin-bottom: -600px;
 }
 
 .ad-banner-bottom {
