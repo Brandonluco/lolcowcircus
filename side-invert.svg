@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="600" viewBox="0 0 120 600">
+  <rect width="120" height="600" fill="#222222"/>
+  <rect x="4" y="4" width="112" height="592" fill="none" stroke="#777" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="60" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#ddd">SIDE BANNER</text>
+  <text x="60" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#ddd">(inverted)</text>
+  <text x="60" y="330" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#999">120 x 600</text>
+</svg>

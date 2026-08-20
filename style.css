@@ -327,8 +327,6 @@ body {
 
     position: sticky;
     top: 80px;
-
-    align-self: start;
 }
 .chat{
     background-color: #ffffff;
@@ -586,40 +584,6 @@ body {
 .article-image-excerpt {
     max-width: 400px;
     margin: 16px 0;
-}
-
-.article-video-thumbnail-link {
-    position: relative;
-    display: block;
-    max-width: 400px;
-    margin: 16px 0;
-}
-
-.article-video-thumbnail-link .article-image-excerpt {
-    margin: 0;
-    display: block;
-}
-
-.play-button-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-
-    background: rgba(0, 0, 0, 0.65);
-    color: white;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-
-    /* Nudge the ▶ glyph so it looks centered rather than off to one side */
-    padding-left: 4px;
 }
 
 .blog-post-excerpt .post-content p {

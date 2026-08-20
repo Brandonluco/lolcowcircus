@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="970" height="90" viewBox="0 0 970 90">
+  <rect width="970" height="90" fill="#222222"/>
+  <rect x="4" y="4" width="962" height="82" fill="none" stroke="#777" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="485" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#ddd">BOTTOM BANNER (inverted)</text>
+  <text x="485" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#999">970 x 90</text>
+</svg>
