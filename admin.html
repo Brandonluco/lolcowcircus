@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <link rel="stylesheet" href="admin.css">
 </head>
@@ -23,23 +24,23 @@
 
     <br><br>
 
-    <button id="onlineButton">🟢 Online</button>
-    <button id="awayButton">🟡 Away</button>
-    <button id="offlineButton">⚫ Offline</button>
+    <button type="button" id="onlineButton">🟢 Online</button>
+    <button type="button" id="awayButton">🟡 Away</button>
+    <button type="button" id="offlineButton">⚫ Offline</button>
 
     <br><br>
 
     <label>Instagram Live (manual — no API to check this automatically; clears itself after 6 hours):</label>
     <br>
-    <button id="instagramLiveOnButton">🟠 Mark Live on Instagram</button>
-    <button id="instagramLiveOffButton">Clear Instagram Live</button>
+    <button type="button" id="instagramLiveOnButton">🟠 Mark Live on Instagram</button>
+    <button type="button" id="instagramLiveOffButton">Clear Instagram Live</button>
 
     <br><br>
 
     <label>Homepage Featured Streamer (overrides automatic pick — only takes effect while they're actually live):</label>
     <br>
-    <button id="setFeaturedButton">📌 Feature This Streamer</button>
-    <button id="unsetFeaturedButton">Remove Feature Pin</button>
+    <button type="button" id="setFeaturedButton">📌 Feature This Streamer</button>
+    <button type="button" id="unsetFeaturedButton">Remove Feature Pin</button>
 
 </section>
 
@@ -49,27 +50,27 @@
 
     <div id="streamerEditingStatus" style="display:none;"></div>
 
-    <input type="text" id="streamerName" placeholder="Streamer name">
+    <input type="text" id="streamerName" placeholder="Streamer name" aria-label="Streamer name">
 
-    <input type="text" id="streamerPlatform" placeholder="Platform">
+    <input type="text" id="streamerPlatform" placeholder="Platform" aria-label="Platform">
 
-    <input type="text" id="streamerChannel" placeholder="Channel / Handle">
+    <input type="text" id="streamerChannel" placeholder="Channel / Handle" aria-label="Channel or handle">
 
-    <input type="text" id="streamerEmbedChannelId" placeholder="YouTube Channel ID (optional, for live embed — starts with UC...)">
+    <input type="text" id="streamerEmbedChannelId" placeholder="YouTube Channel ID (optional, for live embed — starts with UC...)" aria-label="YouTube channel ID for live embed">
 
-    <input type="text" id="streamerKickChannel" placeholder="Kick username (optional, lowercase, no @)">
+    <input type="text" id="streamerKickChannel" placeholder="Kick username (optional, lowercase, no @)" aria-label="Kick username">
 
-    <select id="streamerStatus">
+    <select id="streamerStatus" aria-label="Streamer status">
         <option value="online">🟢 Online</option>
         <option value="away">🟡 Away</option>
         <option value="offline">⚫ Offline</option>
     </select>
 
-    <button id="addStreamer">
+    <button type="button" id="addStreamer">
         Add Streamer
     </button>
 
-    <button id="cancelStreamerEdit" style="display:none;">
+    <button type="button" id="cancelStreamerEdit" style="display:none;">
         Cancel Edit
     </button>
 
@@ -83,18 +84,18 @@
     No active alert
     </div>
 
-    <input type="text" id="alertMessage" placeholder="Alert message">
+    <input type="text" id="alertMessage" placeholder="Alert message" aria-label="Alert message">
 
-    <select id="alertType">
+    <select id="alertType" aria-label="Alert type">
         <option value="news">🟢 News</option>
         <option value="maintenance">🔴 Maintenance</option>
     </select>
 
-    <button id="updateAlert">
+    <button type="button" id="updateAlert">
         Update Alert
     </button>
 
-    <button id="clearAlert">
+    <button type="button" id="clearAlert">
     Clear Alert
 </button>
 
@@ -109,11 +110,11 @@
         YouTube field. This shows up under the chat box on the homepage.
     </p>
 
-    <input type="text" id="featuredVideoTitle" placeholder="Title (optional)">
+    <input type="text" id="featuredVideoTitle" placeholder="Title (optional)" aria-label="Featured video title">
 
-    <input type="text" id="featuredVideoEmbed" placeholder="YouTube embed link">
+    <input type="text" id="featuredVideoEmbed" placeholder="YouTube embed link" aria-label="Featured video YouTube embed link">
 
-    <button id="addFeaturedVideo">
+    <button type="button" id="addFeaturedVideo">
         Add Featured Video
     </button>
 
@@ -137,16 +138,16 @@
 
     <div id="editingStatus" style="display:none;"></div>
 
-    <input type="text" id="articleTitle" placeholder="Article title">
+    <input type="text" id="articleTitle" placeholder="Article title" aria-label="Article title">
 
     <label for="articleStreamer">Streamer (optional):</label>
     <select id="articleStreamer">
         <option value="">— No streamer —</option>
     </select>
 
-    <input type="text" id="articleDate" placeholder="Date">
+    <input type="text" id="articleDate" placeholder="Date" aria-label="Article date">
 
-    <textarea id="articleContentTop" placeholder="Paragraph above media"></textarea>
+    <textarea id="articleContentTop" placeholder="Paragraph above media" aria-label="Paragraph above media"></textarea>
 
     <label for="articleImageFile">Upload image from your computer:</label>
     <input type="file" id="articleImageFile" accept="image/*">
@@ -154,15 +155,15 @@
 
     <input type="hidden" id="articleImage">
 
-    <input type="text" id="articleYoutube" placeholder="YouTube link">
+    <input type="text" id="articleYoutube" placeholder="YouTube link" aria-label="Article YouTube link">
 
-    <textarea id="articleContentBottom" placeholder="Paragraph below media"></textarea>
+    <textarea id="articleContentBottom" placeholder="Paragraph below media" aria-label="Paragraph below media"></textarea>
 
-    <button id="addArticle">
+    <button type="button" id="addArticle">
         Publish Article
     </button>
      
-    <button id="cancelEdit" style="display:none;">
+    <button type="button" id="cancelEdit" style="display:none;">
     Cancel Edit
 </button>
   
