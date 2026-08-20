@@ -327,6 +327,8 @@ body {
 
     position: sticky;
     top: 80px;
+
+    align-self: start;
 }
 .chat{
     background-color: #ffffff;
@@ -489,6 +491,7 @@ body {
     padding: 10px;
     cursor: grab;
     touch-action: pan-y;
+    -webkit-user-select: none;
     user-select: none;
 }
 #alertBox {
@@ -507,6 +510,7 @@ body {
 .status-track {
     display: inline-block;
     white-space: nowrap;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -584,6 +588,40 @@ body {
 .article-image-excerpt {
     max-width: 400px;
     margin: 16px 0;
+}
+
+.article-video-thumbnail-link {
+    position: relative;
+    display: block;
+    max-width: 400px;
+    margin: 16px 0;
+}
+
+.article-video-thumbnail-link .article-image-excerpt {
+    margin: 0;
+    display: block;
+}
+
+.play-button-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.65);
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+
+    /* Nudge the ▶ glyph so it looks centered rather than off to one side */
+    padding-left: 4px;
 }
 
 .blog-post-excerpt .post-content p {
@@ -1190,5 +1228,80 @@ body {
 
     to {
         transform: translateX(-100%);
+    }
+}
+
+
+/* ==========================================================
+   ARCHIVE PROMO BANNERS
+   ========================================================== */
+
+.ad-banner {
+    display: none; /* shown only above the width breakpoints below */
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.ad-banner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+
+    /* Stack both images on top of each other so the crossfade animation
+       can fade between them in place, rather than swapping layout. */
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    animation: ad-banner-crossfade 10s ease-in-out infinite;
+}
+
+/* Offsetting the second image by half the animation's duration puts it
+   in the opposite phase of the first, so as one fades out the other
+   fades in — a gentle, continuous pulse rather than a hard cut. */
+.ad-banner img:nth-child(2) {
+    animation-delay: -5s;
+}
+
+@keyframes ad-banner-crossfade {
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.ad-banner-side {
+    width: 120px;
+    height: 600px;
+
+    position: fixed;
+    top: 50%;
+    right: 24px;
+    transform: translateY(-50%);
+
+    z-index: 10;
+}
+
+.ad-banner-bottom {
+    width: 970px;
+    height: 90px;
+    margin: 40px auto;
+}
+
+/* The side banner needs real breathing room on both sides of the main
+   1400px container before it has anywhere to sit without overlapping
+   real content, so it only shows up on genuinely wide screens. */
+@media (min-width: 1750px) {
+    .ad-banner-side {
+        display: block;
+    }
+}
+
+/* The bottom banner just needs to fit without forcing horizontal
+   scroll — no reason to hide it as early as the side banner. */
+@media (min-width: 1030px) {
+    .ad-banner-bottom {
+        display: block;
     }
 }
