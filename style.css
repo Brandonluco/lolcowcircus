@@ -1281,17 +1281,22 @@ body {
     width: 120px;
     height: 600px;
 
-    position: fixed;
-    top: 50%;
-    right: 24px;
-    transform: translateY(-50%);
+    /* Same mechanism as .sidebar: sticky, not fixed. It sits in the
+       normal page flow (placed right after the header/ticker/alert in
+       the HTML), so it naturally starts below them with no overlap —
+       then sticks at top: 80px once you scroll to it, same offset the
+       chat/featured-videos sidebar uses. */
+    position: sticky;
+    top: 80px;
 
-    z-index: 10;
+    /* Right-align it within the full-width body, since it's a normal
+       block-level element now rather than viewport-positioned. */
+    margin: 0 24px 0 auto;
 }
 
 .ad-banner-bottom {
-    width: 970px;
-    height: 90px;
+    width: 980px;
+    height: 150px;
     margin: 40px auto;
 }
 

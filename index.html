@@ -48,6 +48,20 @@
     <div class="status-track" id="statusTrack"></div>
 </div>
 <div id="alertBox" class="hidden"></div>
+
+    <!-- Side archive promo banner — sits in the normal page flow right
+         here (below the header/ticker/alert) and uses position: sticky,
+         same mechanism as the chat + featured videos sidebar, so it
+         behaves identically: starts in place, sticks once you scroll
+         to it, never needs to fight the header for stacking order. -->
+    <a href="https://archive.org/details/@cowtube"
+       target="_blank"
+       rel="noopener"
+       class="ad-banner ad-banner-side"
+       aria-label="Download archived videos on archive.org">
+        <img src="Images/Articles/Ads/CowTubeSideBanner.svg" alt="">
+        <img src="Images/Articles/Ads/CowTubeSideBannerInvert.svg" alt="">
+    </a>
     <!-- Main Layout Container -->
     <div class="container">
         <main class="content-area">
@@ -140,36 +154,28 @@
     </div>
 
     <!-- =====================================================
-         ARCHIVE PROMO BANNERS
-         Both link to an archive.org page — set ARCHIVE_URL below.
-         Each banner crossfades between a black-and-white and an
-         inverted version of the same image, gently, on a loop.
-         Hidden automatically on screens too narrow to fit them
-         without crowding the actual site content.
+         ARCHIVE PROMO BANNER (bottom)
+         Links to an archive.org page — set ARCHIVE_URL below.
+         Crossfades between a black-and-white and an inverted version
+         of the same image, gently, on a loop. Hidden automatically on
+         screens too narrow to fit it without crowding site content.
          ====================================================== -->
 
-    <a href="https://archive.org/details/YOUR-COLLECTION-HERE"
-       target="_blank"
-       rel="noopener"
-       class="ad-banner ad-banner-side"
-       aria-label="Download archived videos on archive.org">
-        <img src="Images/Ads/side-bw.svg" alt="">
-        <img src="Images/Ads/side-invert.svg" alt="">
-    </a>
+  
 
-    <!-- Footer -->
-    <footer class="site-footer">
-        <p>&copy; 2026 CowTube. All rights reserved.</p>
-    </footer>
-
-    <a href="https://archive.org/details/YOUR-COLLECTION-HERE"
+    <a href="https://archive.org/details/@cowtube"
        target="_blank"
        rel="noopener"
        class="ad-banner ad-banner-bottom"
        aria-label="Download archived videos on archive.org">
-        <img src="Images/Ads/bottom-bw.svg" alt="">
-        <img src="Images/Ads/bottom-invert.svg" alt="">
+        <img src="Images/Articles/Ads/CowTubeHoriz.jpg" alt="">
+        <img src="Images/Articles/Ads/CowTubeHorizInvert.jpg" alt="">
     </a>
+
+  <!-- Footer -->
+    <footer class="site-footer">
+        <p>&copy; 2026 CowTube. All rights reserved.</p>
+    </footer>
 
     <!-- Script file for our anti-copy features later -->
   <script src="streamers.js"></script>
