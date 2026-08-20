@@ -165,7 +165,15 @@ async function sendMessage() {
 
   if (response.ok) {
 
-    socket.send(JSON.stringify(commentData));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(commentData));
+    } else {
+        // The REST POST above already saved the comment, so it's not
+        // lost — it'll just show up on refresh instead of live, same as
+        // it would for anyone else connected right now while this
+        // person's socket happens to be reconnecting in the background.
+        console.log("Chat socket not open — comment saved but not broadcast live");
+    }
 
     messageInput.value = "";
 
@@ -219,48 +227,96 @@ async function loadMessages() {
 loadMessages();
 
 
-const socket = new WebSocket(
-    "wss://" + window.location.host + "/api/chat"
-);
+let socket;
+let reconnectDelay = 2000; // starts at 2s, doubles on repeated failures, capped below
+const MAX_RECONNECT_DELAY = 30000; // never wait longer than 30s between attempts
 
-socket.onopen = () => {
-    console.log("WebSocket connected");
-};
+function connectChatSocket() {
 
-socket.onmessage = (event) => {
+    socket = new WebSocket(
+        "wss://" + window.location.host + "/api/chat"
+    );
 
-    const comment = JSON.parse(event.data);
+    socket.onopen = () => {
+        console.log("WebSocket connected");
 
-    const message = document.createElement("div");
+        // A successful connection means the network's fine again —
+        // reset the backoff so the *next* drop starts retrying quickly
+        // too, rather than staying slow forever after one bad patch.
+        reconnectDelay = 2000;
+    };
 
-    message.classList.add("message");
+    socket.onmessage = (event) => {
 
-    message.innerHTML = `
-        <strong style="color:${comment.color}">
-            ${escapeForDisplay(comment.username)}:
-        </strong>
-        ${escapeForDisplay(comment.message)}
-        <span class="timestamp">
-            ${escapeForDisplay(comment.created_at)}
-        </span>
-    `;
+        const comment = JSON.parse(event.data);
 
-const isAtBottom =
-    chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
+        const message = document.createElement("div");
 
-chatMessages.appendChild(message);
+        message.classList.add("message");
 
-if (isAtBottom) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-} else {
-    newMessageAlert.style.display = "block";
+        message.innerHTML = `
+            <strong style="color:${comment.color}">
+                ${escapeForDisplay(comment.username)}:
+            </strong>
+            ${escapeForDisplay(comment.message)}
+            <span class="timestamp">
+                ${escapeForDisplay(comment.created_at)}
+            </span>
+        `;
+
+        const isAtBottom =
+            chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
+
+        chatMessages.appendChild(message);
+
+        if (isAtBottom) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+            newMessageAlert.style.display = "block";
+        }
+
+    };
+
+    socket.onclose = () => {
+
+        console.log("WebSocket disconnected — reconnecting in", reconnectDelay, "ms");
+
+        // Browsers routinely drop idle WebSocket connections on
+        // background/inactive tabs to save resources. Without this, chat
+        // would go silently dead until the page was manually refreshed —
+        // this keeps retrying in the background so it recovers on its own.
+        setTimeout(connectChatSocket, reconnectDelay);
+
+        reconnectDelay = Math.min(reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
+
+    };
+
+    socket.onerror = () => {
+        // onclose fires right after this regardless, so the reconnect
+        // above still runs — this just avoids an unhandled error log.
+        console.log("WebSocket error");
+    };
+
 }
 
-};
+connectChatSocket();
 
-socket.onclose = () => {
-    console.log("WebSocket disconnected");
-};
+// Belt-and-suspenders: the moment you switch back to this tab, immediately
+// check the connection instead of waiting for the backoff timer — makes
+// coming back to the tab feel instant rather than laggy.
+document.addEventListener("visibilitychange", () => {
+
+    if (document.visibilityState === "visible" &&
+        socket &&
+        socket.readyState !== WebSocket.OPEN &&
+        socket.readyState !== WebSocket.CONNECTING) {
+
+        console.log("Tab became visible with a dead socket — reconnecting now");
+        connectChatSocket();
+
+    }
+
+});
 
 
 
