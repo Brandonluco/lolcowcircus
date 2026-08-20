@@ -53,7 +53,7 @@ if (chooseNameButton) {
 
     chooseNameButton.addEventListener("click", function () {
 
-        nameChangeBox.style.display = "block";
+        nameChangeBox.classList.remove("hidden");
 
     });
 
@@ -78,7 +78,7 @@ if (saveNameButton) {
 
         nameInput.value = "";
 
-        nameChangeBox.style.display = "none";
+        nameChangeBox.classList.add("hidden");
 
     });
 
@@ -418,14 +418,14 @@ async function loadAlert() {
 
     if (!alert) {
 
-        alertBox.style.display = "none";
+        alertBox.classList.add("hidden");
 
         return;
 
     }
 
 
-    alertBox.style.display = "block";
+    alertBox.classList.remove("hidden");
 
     alertBox.textContent = alert.message;
 

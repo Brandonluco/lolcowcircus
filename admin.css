@@ -186,3 +186,15 @@ button {
     color: white;
 
 }
+
+/* Utility class replacing inline style="display:none" — toggled from JS
+   via classList instead of writing to element.style directly. */
+.hidden {
+    display: none;
+}
+
+.admin-note {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0;
+}

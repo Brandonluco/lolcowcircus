@@ -1311,3 +1311,10 @@ body {
         display: block;
     }
 }
+
+
+/* Utility class replacing inline style="display:none" — toggled from JS
+   via classList instead of writing to element.style directly. */
+.hidden {
+    display: none;
+}

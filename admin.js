@@ -309,10 +309,10 @@ function editStreamer(id) {
 
     addStreamer.textContent = "Save Changes";
 
-    cancelStreamerEdit.style.display = "inline-block";
+    cancelStreamerEdit.classList.remove("hidden");
 
     streamerEditingStatus.textContent = "Currently editing: " + streamer.name;
-    streamerEditingStatus.style.display = "block";
+    streamerEditingStatus.classList.remove("hidden");
 
     document.getElementById("streamerName").scrollIntoView({ behavior: "smooth" });
 
@@ -330,9 +330,9 @@ function resetStreamerForm() {
 
     addStreamer.textContent = "Add Streamer";
 
-    cancelStreamerEdit.style.display = "none";
+    cancelStreamerEdit.classList.add("hidden");
 
-    streamerEditingStatus.style.display = "none";
+    streamerEditingStatus.classList.add("hidden");
     streamerEditingStatus.textContent = "";
 
 }
@@ -509,11 +509,11 @@ function editArticle(id) {
 
 addArticle.textContent = "Save Changes";
 
-cancelEdit.style.display = "inline-block";
+cancelEdit.classList.remove("hidden");
 
 editingStatus.textContent = "Currently editing: " + article.title;
 
-editingStatus.style.display = "block";
+editingStatus.classList.remove("hidden");
 
 document.getElementById("article-manager").scrollIntoView({
     behavior: "smooth"
@@ -614,9 +614,9 @@ cancelEdit.addEventListener("click", function() {
 
     addArticle.textContent = "Publish Article";
 
-    cancelEdit.style.display = "none";
+    cancelEdit.classList.add("hidden");
 
-    editingStatus.style.display = "none";
+    editingStatus.classList.add("hidden");
 
     editingStatus.textContent = "";
 
@@ -706,9 +706,9 @@ if (editingArticleId === null) {
 
     addArticle.textContent = "Publish Article";
 
-    cancelEdit.style.display = "none";
+    cancelEdit.classList.add("hidden");
 
-    editingStatus.style.display = "none";
+    editingStatus.classList.add("hidden");
     
     editingStatus.textContent = "";
 
