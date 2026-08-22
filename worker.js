@@ -17,6 +17,10 @@ export class ChatRoom {
     // Tracks how many open sessions belong to each IP, so we can enforce
     // MAX_SESSIONS_PER_IP without scanning this.sessions on every connect.
     this.sessionCountByIp = new Map();
+    // Which IP each open session belongs to, so the broadcast loop can
+    // release a dead session's slot even though it isn't the session whose
+    // own close/error listener is currently running (see releaseSession).
+    this.sessionIp = new Map();
     // In-memory per-IP cooldown for this room. This is separate from the
     // /api/comments throttle because someone can open a websocket connection
     // directly (skipping the REST endpoint and its client entirely) and
@@ -64,34 +68,42 @@ export class ChatRoom {
 
     this.sessions.add(server);
     this.sessionCountByIp.set(ip, ipCount + 1);
+    this.sessionIp.set(server, ip);
 
     // "close" and "error" can both fire for the same socket in some cases,
-    // so make cleanup idempotent — only release the IP's slot the first time.
-    let released = false;
+    // and now the broadcast loop can also trigger a release for a socket
+    // other than the one currently running this listener — so cleanup is
+    // keyed off a "released" flag stored per-session rather than one shared
+    // closure variable, and releaseSession takes whichever session it's
+    // cleaning up instead of always assuming it's `server`.
+    const releasedSessions = new WeakSet();
 
-    const releaseSession = () => {
-      if (released) {
+    const releaseSession = (session) => {
+      if (releasedSessions.has(session)) {
         return;
       }
-      released = true;
+      releasedSessions.add(session);
 
-      this.sessions.delete(server);
+      this.sessions.delete(session);
 
-      const current = this.sessionCountByIp.get(ip) || 0;
+      const sessionIp = this.sessionIp.get(session);
+      this.sessionIp.delete(session);
+
+      const current = this.sessionCountByIp.get(sessionIp) || 0;
       if (current <= 1) {
-        this.sessionCountByIp.delete(ip);
+        this.sessionCountByIp.delete(sessionIp);
       } else {
-        this.sessionCountByIp.set(ip, current - 1);
+        this.sessionCountByIp.set(sessionIp, current - 1);
       }
     };
 
     server.addEventListener("error", (event) => {
   console.log("WebSocket error:", event);
-  releaseSession();
+  releaseSession(server);
 });
 
     server.addEventListener("close", () => {
-  releaseSession();
+  releaseSession(server);
 });
 
 server.addEventListener("message", (event) => {
@@ -110,9 +122,21 @@ server.addEventListener("message", (event) => {
 
     console.log("Broadcasting:", event.data);
 
+  // A socket can be in a half-dead state (e.g. the client vanished but the
+  // "close" event for it hasn't fired yet) at the exact moment we try to
+  // broadcast to it. send() throwing on one stale session used to bubble
+  // all the way up out of this handler uncaught — which is very likely
+  // what's shown up in your logs as the Durable Object being reset. Now a
+  // single bad socket just gets cleaned up and skipped instead of taking
+  // the whole broadcast down.
   for (const session of this.sessions) {
 
-    session.send(event.data);
+    try {
+      session.send(event.data);
+    } catch (err) {
+      console.log("Dropping dead session during broadcast:", err);
+      releaseSession(session);
+    }
 
   }
 
