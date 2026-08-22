@@ -235,6 +235,46 @@ unsetFeaturedButton.addEventListener("click", async function() {
 });
 
 
+const stockUpButton = document.getElementById("stockUpButton");
+const stockDownButton = document.getElementById("stockDownButton");
+const stockClearButton = document.getElementById("stockClearButton");
+
+
+async function setStockTrend(trend) {
+
+    const id = streamerSelect.value;
+
+    await fetch("/api/streamers", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            stockTrend: trend
+        })
+    });
+
+    await loadStreamers();
+
+}
+
+
+stockUpButton.addEventListener("click", function() {
+    setStockTrend("up");
+});
+
+
+stockDownButton.addEventListener("click", function() {
+    setStockTrend("down");
+});
+
+
+stockClearButton.addEventListener("click", function() {
+    setStockTrend(null);
+});
+
+
 function displayStreamers() {
 
     
@@ -251,6 +291,8 @@ function displayStreamers() {
             <p>Status: ${streamer.status}</p>
             ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
             ${Number(streamer.featured_pinned) === 1 ? `<p>📌 Pinned as homepage featured streamer</p>` : ""}
+            ${streamer.stock_trend === "up" ? `<p>📈 Stock: up</p>` : ""}
+            ${streamer.stock_trend === "down" ? `<p>📉 Stock: down</p>` : ""}
         `;
 
         const actionsRow = document.createElement("div");

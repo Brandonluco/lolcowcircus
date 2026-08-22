@@ -1090,9 +1090,18 @@ async function renderStreamerDirectory(container) {
             liveBadgeHtml = `<span class="live-badge live-badge-manual">🟠 LIVE</span>`;
         }
 
+        let stockBadgeHtml = "";
+
+        if (streamer.stock_trend === "up") {
+            stockBadgeHtml = `<span class="stock-badge stock-badge-up">📈 ▲</span>`;
+        } else if (streamer.stock_trend === "down") {
+            stockBadgeHtml = `<span class="stock-badge stock-badge-down">📉 ▼</span>`;
+        }
+
         card.innerHTML = `
             <strong>${streamer.name}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
+            ${stockBadgeHtml}
             ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
             ${liveBadgeHtml}
         `;

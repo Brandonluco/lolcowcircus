@@ -898,6 +898,25 @@ export default {
 
         }
 
+        // Stock trend is a manual, admin-set signal (not automated) — "up"
+        // or "down" to flag a streamer as more/less entertaining lately,
+        // or null to clear it back to no opinion set.
+        if (data.stockTrend !== undefined) {
+
+          await env.DB
+            .prepare(
+              "UPDATE streamers SET stock_trend = ? WHERE id = ?"
+            )
+            .bind(
+              data.stockTrend,
+              data.id
+            )
+            .run();
+
+          return Response.json({ success: true });
+
+        }
+
         // Instagram has no public API to verify live status, so this is a
         // manual, self-reported toggle rather than something we check
         // automatically. instagram_live_set_at gets stamped here so the
