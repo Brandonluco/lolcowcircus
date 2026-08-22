@@ -780,8 +780,8 @@ body {
 
 .stock-badge {
     position: absolute;
-    bottom: 14px;
-    left: 14px;
+    top: 14px;
+    right: 14px;
     display: inline-flex;
     align-items: center;
     gap: 3px;
