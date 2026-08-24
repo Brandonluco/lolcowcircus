@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Streamer Stock History | CowTube</title>
+    <link rel="stylesheet" href="stock.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="stock-page">
+
+    <a href="/" class="stock-back-link">← Back to CowTube</a>
+
+    <h1>Streamer Stock History</h1>
+    <p class="stock-page-subtitle">
+        Last 30 days. Green means we think they've been on a good run lately,
+        red means the opposite — this is a manual, admin-set opinion, not an
+        automated stat.
+    </p>
+
+    <div id="stock-chart-grid" class="stock-chart-grid">
+        <p class="stock-loading">Loading...</p>
+    </div>
+
+</div>
+
+<script src="stock-charts.js"></script>
+<script src="stock.js"></script>
+
+</body>
+</html>

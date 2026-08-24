@@ -539,6 +539,31 @@ async function loadFeaturedVideos() {
 
 loadFeaturedVideos();
 
+async function loadStockGraph() {
+
+    const container = document.getElementById("stock-graph-mini");
+
+    if (!container) {
+        return;
+    }
+
+    const response = await fetch("/api/stock-history");
+
+    const rows = await response.json();
+
+    const grouped = groupStockHistoryRows(rows);
+
+    container.innerHTML = buildStockMoversSvg(grouped, {
+        width: 320,
+        height: 260,
+        padding: 34,
+        limit: 7
+    });
+
+}
+
+loadStockGraph();
+
 
 const header = document.querySelector(".site-header");
 

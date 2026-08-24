@@ -370,6 +370,39 @@ body {
     text-align: center;
     padding: 10px 0;
 }
+
+.stock-graph-box {
+    display: block;
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+
+    /* Square, and the same width as the rest of the 400px sidebar column,
+       so it reads as "the same size" as the Featured Videos box next to it
+       even though its content (a chart) doesn't naturally size itself the
+       way a stack of videos does. */
+    aspect-ratio: 1 / 1;
+
+    transition: box-shadow 0.2s ease;
+}
+
+.stock-graph-box:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.stock-graph-box .chat-header {
+    margin: -20px -20px 15px;
+    border-radius: 8px 8px 0 0;
+}
+
+.stock-graph-mini svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
 .chat-messages {
     flex: 1;
     overflow-y: auto;

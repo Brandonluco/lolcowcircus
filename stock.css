@@ -1,0 +1,87 @@
+/* ======================================
+   CowTube Stock History
+   ====================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #333;
+}
+
+.stock-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 25px 60px;
+}
+
+.stock-back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.stock-back-link:hover {
+    text-decoration: underline;
+}
+
+.stock-page h1 {
+    margin: 0 0 8px;
+    color: #222;
+}
+
+.stock-page-subtitle {
+    color: #666;
+    margin: 0 0 30px;
+    max-width: 640px;
+    line-height: 1.5;
+}
+
+.stock-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.stock-chart-tile {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.stock-chart-tile-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.stock-chart-tile-name {
+    font-weight: 600;
+    color: #222;
+    font-size: 0.95rem;
+}
+
+.stock-chart-tile-ticker {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.stock-chart-tile svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.stock-loading {
+    color: #999;
+}

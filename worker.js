@@ -1481,6 +1481,36 @@ export default {
 
     }
 
+    // Bulk version of the above — every streamer, joined with whatever
+    // stock_history rows they have from the last 30 days, in a single query.
+    // Used by both the homepage "top movers" widget and the full stock.html
+    // page, so neither has to make one request per streamer. A streamer
+    // with no rows in the window still comes back (as a single row with
+    // trend/changed_at both null, courtesy of the LEFT JOIN) so the frontend
+    // can show "no recent movement" instead of just omitting them.
+    if (url.pathname === "/api/stock-history" && request.method === "GET") {
+
+      const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+      const { results } = await env.DB
+        .prepare(
+          `
+          SELECT streamers.id AS streamer_id, streamers.name, streamers.ticker,
+            stock_history.trend, stock_history.changed_at
+          FROM streamers
+          LEFT JOIN stock_history
+            ON stock_history.streamer_id = streamers.id
+            AND stock_history.changed_at >= ?
+          ORDER BY streamers.id ASC, stock_history.changed_at ASC
+          `
+        )
+        .bind(cutoff)
+        .all();
+
+      return Response.json(results);
+
+    }
+
     // =====================
     // STREAMER DIRECTORY + INDIVIDUAL STREAMER PAGES (server-rendered meta tags)
     // =====================
