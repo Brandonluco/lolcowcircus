@@ -44,6 +44,22 @@ button {
     font-size: 16px;
 }
 
+/* The Streamer Manager and Add/Edit Streamer sections (left column) never
+   had their own input styling — they were relying on the browser's bare
+   default look. This gives them the same full-width, padded, spaced-out
+   treatment .article-manager already has on the right, without touching
+   .article-manager itself or any other section. box-sizing: border-box
+   keeps width: 100% + padding from overflowing the 400px column. */
+.admin-left input[type="text"],
+.admin-left select {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px;
+    font-size: 16px;
+}
+
 .admin-article-card {
     background: #f8f8f8;
     border: 1px solid #ddd;
