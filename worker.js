@@ -808,8 +808,8 @@ export default {
           .prepare(
             `
             INSERT INTO streamers
-            (name, platform, channel, status, slug, embed_channel_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (name, platform, channel, status, slug, embed_channel_id, ticker)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -818,7 +818,8 @@ export default {
             data.channel,
             data.status,
             slug,
-            data.embedChannelId || null
+            data.embedChannelId || null,
+            data.ticker || null
           )
           .run();
 
@@ -842,7 +843,7 @@ export default {
             .prepare(
               `
               UPDATE streamers
-              SET name = ?, platform = ?, channel = ?, status = ?, embed_channel_id = ?, kick_channel = ?
+              SET name = ?, platform = ?, channel = ?, status = ?, embed_channel_id = ?, kick_channel = ?, ticker = ?
               WHERE id = ?
               `
             )
@@ -853,6 +854,7 @@ export default {
               data.status,
               data.embedChannelId || null,
               data.kickChannel || null,
+              data.ticker || null,
               data.id
             )
             .run();
@@ -924,7 +926,11 @@ export default {
 
         // Stock trend is a manual, admin-set signal (not automated) — "up"
         // or "down" to flag a streamer as more/less entertaining lately,
-        // or null to clear it back to no opinion set.
+        // or null to clear it back to no opinion set. Every change (including
+        // clearing) is also logged to stock_history with a timestamp, so the
+        // full up/down timeline can be graphed later — the streamers.stock_trend
+        // column only ever holds the current value, this table is what makes
+        // history possible.
         if (data.stockTrend !== undefined) {
 
           await env.DB
@@ -934,6 +940,17 @@ export default {
             .bind(
               data.stockTrend,
               data.id
+            )
+            .run();
+
+          await env.DB
+            .prepare(
+              "INSERT INTO stock_history (streamer_id, trend, changed_at) VALUES (?, ?, ?)"
+            )
+            .bind(
+              data.id,
+              data.stockTrend,
+              Date.now()
             )
             .run();
 
@@ -1440,6 +1457,27 @@ export default {
         .all();
 
       return Response.json({ streamer, articles });
+
+    }
+
+    // =====================
+    // STOCK HISTORY API (not used by any page yet — this just exposes the
+    // timeline being logged in PUT /api/streamers above, ready for a future
+    // chart to read from)
+    // =====================
+
+    if (url.pathname.startsWith("/api/streamers/") && url.pathname.endsWith("/stock-history") && request.method === "GET") {
+
+      const streamerId = url.pathname.replace("/api/streamers/", "").replace("/stock-history", "");
+
+      const { results } = await env.DB
+        .prepare(
+          "SELECT trend, changed_at FROM stock_history WHERE streamer_id = ? ORDER BY changed_at ASC"
+        )
+        .bind(streamerId)
+        .all();
+
+      return Response.json(results);
 
     }
 

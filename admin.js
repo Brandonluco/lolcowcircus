@@ -1,6 +1,7 @@
 const streamerName = document.getElementById("streamerName");
 const streamerPlatform = document.getElementById("streamerPlatform");
 const streamerChannel = document.getElementById("streamerChannel");
+const streamerTicker = document.getElementById("streamerTicker");
 const streamerEmbedChannelId = document.getElementById("streamerEmbedChannelId");
 const streamerKickChannel = document.getElementById("streamerKickChannel");
 const cancelStreamerEdit = document.getElementById("cancelStreamerEdit");
@@ -286,7 +287,7 @@ function displayStreamers() {
         const div = document.createElement("div");
 
         div.innerHTML = `
-            <strong>${streamer.name}</strong>
+            <strong>${streamer.name}</strong>${streamer.ticker ? ` <span class="admin-note">(${escapeForDisplay(streamer.ticker)})</span>` : ""}
             <p>Platform: ${streamer.platform || "(none set)"}</p>
             <p>Status: ${streamer.status}</p>
             ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
@@ -343,6 +344,7 @@ function editStreamer(id) {
     streamerName.value = streamer.name || "";
     streamerPlatform.value = streamer.platform || "";
     streamerChannel.value = streamer.channel || "";
+    streamerTicker.value = streamer.ticker || "";
     streamerEmbedChannelId.value = streamer.embed_channel_id || "";
     streamerKickChannel.value = streamer.kick_channel || "";
     streamerStatus.value = streamer.status || "online";
@@ -367,6 +369,7 @@ function resetStreamerForm() {
     streamerName.value = "";
     streamerPlatform.value = "";
     streamerChannel.value = "";
+    streamerTicker.value = "";
     streamerEmbedChannelId.value = "";
     streamerKickChannel.value = "";
 
@@ -570,6 +573,7 @@ addStreamer.addEventListener("click", async function() {
         name: streamerName.value,
         platform: streamerPlatform.value,
         channel: streamerChannel.value,
+        ticker: streamerTicker.value.trim().toUpperCase(),
         embedChannelId: streamerEmbedChannelId.value,
         kickChannel: streamerKickChannel.value.trim().toLowerCase(),
         status: streamerStatus.value
