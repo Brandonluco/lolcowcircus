@@ -20,6 +20,8 @@ const articleStreamer = document.getElementById("articleStreamer");
 const articleDate = document.getElementById("articleDate");
 const articleContentTop = document.getElementById("articleContentTop");
 const articleImage = document.getElementById("articleImage");
+const articleImageWidth = document.getElementById("articleImageWidth");
+const articleImageHeight = document.getElementById("articleImageHeight");
 const articleImageFile = document.getElementById("articleImageFile");
 const imageUploadStatus = document.getElementById("imageUploadStatus");
 const articleYoutube = document.getElementById("articleYoutube");
@@ -59,6 +61,26 @@ articleImageFile.addEventListener("change", async function () {
     }
 
     imageUploadStatus.textContent = "Uploading...";
+
+    // Read the file's real pixel dimensions in the browser before it's even
+    // finished uploading. These get saved alongside the article so the
+    // public page can put width/height attributes on the <img> tag — that's
+    // what lets the browser reserve the correct amount of space for it
+    // before the image itself has loaded, instead of the page jumping once
+    // it pops in (a layout shift, same category of problem as the header
+    // collapse issue).
+    const dimensions = await new Promise((resolve) => {
+        const probeImage = new Image();
+        probeImage.onload = () => {
+            resolve({ width: probeImage.naturalWidth, height: probeImage.naturalHeight });
+            URL.revokeObjectURL(probeImage.src);
+        };
+        probeImage.onerror = () => resolve({ width: null, height: null });
+        probeImage.src = URL.createObjectURL(file);
+    });
+
+    articleImageWidth.value = dimensions.width || "";
+    articleImageHeight.value = dimensions.height || "";
 
     const response = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
         method: "POST",
@@ -543,6 +565,8 @@ function editArticle(id) {
     articleDate.value = article.date;
     articleContentTop.value = article.contentTop;
     articleImage.value = article.image;
+    articleImageWidth.value = article.image_width || "";
+    articleImageHeight.value = article.image_height || "";
 
     imageUploadStatus.textContent = article.image
         ? "Current image: " + article.image + " (choose a new file to replace it)"
@@ -653,6 +677,8 @@ cancelEdit.addEventListener("click", function() {
     articleDate.value = "";
     articleContentTop.value = "";
     articleImage.value = "";
+    articleImageWidth.value = "";
+    articleImageHeight.value = "";
     articleImageFile.value = "";
     imageUploadStatus.textContent = "";
     articleYoutube.value = "";
@@ -722,6 +748,8 @@ addArticle.addEventListener("click", async function() {
         date: articleDate.value,
         contentTop: articleContentTop.value,
         image: articleImage.value,
+        imageWidth: articleImageWidth.value || null,
+        imageHeight: articleImageHeight.value || null,
         youtube: articleYoutube.value,
         contentBottom: articleContentBottom.value
     };
@@ -771,6 +799,8 @@ articleStreamer.value = "";
 articleDate.value = "";
 articleContentTop.value = "";
 articleImage.value = "";
+articleImageWidth.value = "";
+articleImageHeight.value = "";
 articleImageFile.value = "";
 imageUploadStatus.textContent = "";
 articleYoutube.value = "";

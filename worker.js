@@ -1071,8 +1071,8 @@ export default {
           .prepare(
             `
             INSERT INTO articles
-            (title, date, contentTop, image, youtube, contentBottom, slug, streamer_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (title, date, contentTop, image, image_width, image_height, youtube, contentBottom, slug, streamer_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .bind(
@@ -1080,6 +1080,8 @@ export default {
             data.date,
             data.contentTop,
             data.image,
+            data.imageWidth || null,
+            data.imageHeight || null,
             data.youtube,
             data.contentBottom,
             slug,
@@ -1117,7 +1119,7 @@ export default {
           .prepare(
             `
             UPDATE articles
-            SET title = ?, date = ?, contentTop = ?, image = ?, youtube = ?, contentBottom = ?, slug = ?, streamer_id = ?
+            SET title = ?, date = ?, contentTop = ?, image = ?, image_width = ?, image_height = ?, youtube = ?, contentBottom = ?, slug = ?, streamer_id = ?
             WHERE id = ?
             `
           )
@@ -1126,6 +1128,8 @@ export default {
             data.date,
             data.contentTop,
             data.image,
+            data.imageWidth || null,
+            data.imageHeight || null,
             data.youtube,
             data.contentBottom,
             slug,

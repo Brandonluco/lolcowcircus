@@ -567,20 +567,40 @@ loadStockGraph();
 
 const header = document.querySelector(".site-header");
 
-let lastScroll = window.scrollY;
+// One-way collapse instead of a live toggle: this used to flip "expanded"
+// on and off on every scroll tick past a tiny 10px threshold, which meant
+// any small oscillation near the top (mouse wheel jitter, momentum
+// scrolling) re-triggered the header's height change — and each one is a
+// near-maximum-severity layout shift for everything below it, since
+// .container's whole box moves. Now it only collapses once you've
+// genuinely scrolled away from the top, and only re-expands once you're
+// truly back at scrollY 0 — a real trip back to the top, not a flicker.
+let headerCollapsed = false;
 
-window.addEventListener("scroll", () => {
+const HEADER_COLLAPSE_THRESHOLD = 150;
+const HEADER_EXPAND_THRESHOLD = 5;
+
+function syncHeaderState() {
+
     const currentScroll = window.scrollY;
 
-if (currentScroll <= 10) {
-    header.classList.add("expanded");
-} 
-else {
-    header.classList.remove("expanded");
+    if (!headerCollapsed && currentScroll > HEADER_COLLAPSE_THRESHOLD) {
+        header.classList.remove("expanded");
+        headerCollapsed = true;
+    } else if (headerCollapsed && currentScroll <= HEADER_EXPAND_THRESHOLD) {
+        header.classList.add("expanded");
+        headerCollapsed = false;
+    }
+
 }
 
-    lastScroll = currentScroll;
-});
+// Covers page loads that don't start at scrollY 0 (e.g. the browser
+// restoring a previous scroll position on refresh), so the header's actual
+// state matches reality immediately instead of waiting on the first scroll
+// event to correct it.
+syncHeaderState();
+
+window.addEventListener("scroll", syncHeaderState);
 
 function attachArticleSearch(container, placeholder) {
 
@@ -912,14 +932,17 @@ function createArticleCard(article, options = {}) {
                         if (thumbnailUrl) {
                             return `
                                 <a href="/article/${article.slug}" class="article-video-thumbnail-link">
-                                    <img src="${thumbnailUrl}" class="article-image article-image-excerpt">
+                                    <img src="${thumbnailUrl}" class="article-image article-image-excerpt" width="480" height="360">
                                     <span class="play-button-overlay">▶</span>
                                 </a>
                             `;
                         }
 
                         if (article.image) {
-                            return `<img src="${article.image}" class="article-image article-image-excerpt">`;
+                            const dims = (article.image_width && article.image_height)
+                                ? ` width="${article.image_width}" height="${article.image_height}"`
+                                : "";
+                            return `<img src="${article.image}" class="article-image article-image-excerpt"${dims}>`;
                         }
 
                         return "";
@@ -973,7 +996,7 @@ ${article.youtube ? `
 </div>
 ` : ""}
 
-${article.image ? `<img src="${article.image}" class="article-image">` : ""}
+${article.image ? `<img src="${article.image}" class="article-image"${(article.image_width && article.image_height) ? ` width="${article.image_width}" height="${article.image_height}"` : ""}>` : ""}
 
 <p class="article-text">${article.contentBottom}</p>
 
