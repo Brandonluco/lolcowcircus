@@ -1634,6 +1634,55 @@ export default {
     }
 
     // =====================
+    // HOMEPAGE (server-rendered alert box)
+    // =====================
+    // The alert box used to start hidden in the static HTML and only get
+    // shown/populated by client-side JS after an async fetch — meaning any
+    // active alert would pop into existence and shove everything below it
+    // down a beat after the page had already rendered. That's a layout
+    // shift on essentially every homepage load whenever an alert is active,
+    // regardless of scrolling. Baking the correct final state directly into
+    // the HTML the server sends means there's nothing to pop in — the first
+    // paint is already correct. loadAlert() in script.js still runs on
+    // load too, but now it's just confirming state that's already right
+    // rather than fixing a wrong one — it was never live-polling and still
+    // isn't, so an alert posted while someone already has the page open
+    // won't appear until they reload, same as before this change.
+    if (url.pathname === "/") {
+
+      const alert = await env.DB
+        .prepare("SELECT * FROM alerts ORDER BY id DESC LIMIT 1")
+        .first();
+
+      const templateResponse = await env.ASSETS.fetch(request);
+      let html = await templateResponse.text();
+
+      let renderedAlertBox;
+
+      if (!alert) {
+
+        renderedAlertBox = `<div id="alertBox" class="hidden"></div>`;
+
+      } else {
+
+        const bgColor = alert.type === "maintenance" ? "#e74c3c" : "#2ecc71";
+
+        renderedAlertBox = `<div id="alertBox" style="background-color: ${bgColor};">${escapeHtml(alert.message)}</div>`;
+
+      }
+
+      html = html.replace(
+        `<div id="alertBox" class="hidden"></div>`,
+        renderedAlertBox
+      );
+
+      return new Response(html, {
+        headers: { "Content-Type": "text/html;charset=UTF-8" }
+      });
+
+    }
+
+    // =====================
     // WEBSITE FILES
     // =====================
 
