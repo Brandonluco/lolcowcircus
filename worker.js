@@ -230,6 +230,164 @@ function sanitizeColor(color) {
 
 }
 
+// =====================================================================
+// CLOUDFLARE ACCESS VERIFICATION (admin routes)
+// =====================================================================
+//
+// Access already stops anyone without credentials from loading the admin
+// panel. This adds the same check at the API layer, so a request that
+// never went through Access — a direct curl/fetch to one of these URLs,
+// or a future admin route someone forgets to add to the Access policy —
+// still can't get through. It works entirely off the sign-in you already
+// do: once you're authenticated, Cloudflare stamps every request your
+// browser makes to a Access-protected path with a signed token in the
+// Cf-Access-Jwt-Assertion header, automatically, with zero change needed
+// in admin.js. This just verifies that token is real before letting a
+// request reach the database.
+//
+// Requires two Variables set in the Cloudflare dashboard for this Worker
+// (Workers & Pages > cowtube > Settings > Variables and Secrets):
+//   ACCESS_TEAM_DOMAIN   e.g. "yourteam.cloudflareaccess.com"
+//   ACCESS_AUD           the Application Audience (AUD) tag, found on the
+//                         Access application's Overview tab in Zero Trust
+//
+// Also requires the Access application (in Zero Trust > Access > Applications)
+// to actually cover the admin API paths below, not just admin.html — see
+// the deploy notes for the exact path list.
+
+function base64UrlDecodeToBytes(str) {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
+  const binary = atob(str);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function base64UrlDecodeToString(str) {
+  return new TextDecoder().decode(base64UrlDecodeToBytes(str));
+}
+
+// Cached in memory for the life of this Worker instance so a burst of
+// admin requests doesn't refetch Cloudflare's public keys every time —
+// refreshed at most once every 10 minutes.
+let cachedAccessJwks = null;
+let cachedAccessJwksAt = 0;
+
+async function getAccessJwks(teamDomain) {
+
+  if (cachedAccessJwks && Date.now() - cachedAccessJwksAt < 10 * 60 * 1000) {
+    return cachedAccessJwks;
+  }
+
+  const res = await fetch(`https://${teamDomain}/cdn-cgi/access/certs`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Access certs: ${res.status}`);
+  }
+
+  cachedAccessJwks = await res.json();
+  cachedAccessJwksAt = Date.now();
+
+  return cachedAccessJwks;
+
+}
+
+// Verifies a Cf-Access-Jwt-Assertion token: real signature from your
+// Access team, not expired, right issuer, right audience. Throws on any
+// failure — callers treat "threw" the same as "not authorized".
+async function verifyAccessJwt(token, env) {
+
+  const parts = token.split(".");
+
+  if (parts.length !== 3) {
+    throw new Error("Malformed token");
+  }
+
+  const [headerB64, payloadB64, signatureB64] = parts;
+
+  const header = JSON.parse(base64UrlDecodeToString(headerB64));
+  const payload = JSON.parse(base64UrlDecodeToString(payloadB64));
+
+  const jwks = await getAccessJwks(env.ACCESS_TEAM_DOMAIN);
+  const jwk = jwks.keys.find((k) => k.kid === header.kid);
+
+  if (!jwk) {
+    throw new Error("No matching Access signing key for this token");
+  }
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+
+  const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const signature = base64UrlDecodeToBytes(signatureB64);
+
+  const validSignature = await crypto.subtle.verify(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    signature,
+    signedData
+  );
+
+  if (!validSignature) {
+    throw new Error("Bad Access token signature");
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (payload.exp && nowSeconds >= payload.exp) {
+    throw new Error("Access token expired");
+  }
+
+  if (payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) {
+    throw new Error("Access token has the wrong issuer");
+  }
+
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+
+  if (!audiences.includes(env.ACCESS_AUD)) {
+    throw new Error("Access token has the wrong audience");
+  }
+
+  return payload;
+
+}
+
+// Call this at the top of every admin-only route. Returns a Response to
+// send straight back (request rejected) or null (request is genuinely
+// from an Access-authenticated session, safe to continue).
+async function requireAdmin(request, env) {
+
+  if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) {
+    console.log("ACCESS_TEAM_DOMAIN/ACCESS_AUD not configured — blocking admin request until set up");
+    return Response.json({ error: "admin_not_configured" }, { status: 500 });
+  }
+
+  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+
+  if (!token) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  try {
+
+    await verifyAccessJwt(token, env);
+    return null;
+
+  } catch (err) {
+
+    console.log("Access JWT rejected:", err.message);
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  }
+
+}
+
 // Simple per-IP cooldown so one visitor can't flood chat/comments faster
 // than a person realistically types. Stores one row per (ip, action) pair
 // with the timestamp of their last accepted post; a new post from the same
@@ -653,6 +811,9 @@ export default {
       // POST new alert
       if (request.method === "POST") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         await env.DB
@@ -675,6 +836,9 @@ export default {
 
       // DELETE alert
       if (request.method === "DELETE") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
 
         await env.DB
           .prepare(
@@ -715,6 +879,9 @@ export default {
       // POST new featured video
       if (request.method === "POST") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         if (!data.embed_url) {
@@ -747,6 +914,9 @@ export default {
 
     // DELETE a single featured video by id
     if (url.pathname.startsWith("/api/featured-videos/") && request.method === "DELETE") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
 
       const id = url.pathname.split("/api/featured-videos/")[1];
 
@@ -800,6 +970,9 @@ export default {
       // POST new streamer
       if (request.method === "POST") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         const slug = await generateUniqueStreamerSlug(env, data.name);
@@ -833,6 +1006,9 @@ export default {
 
             // UPDATE streamer status
       if (request.method === "PUT") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
 
         const data = await request.json();
 
@@ -1004,6 +1180,9 @@ export default {
       // DELETE streamer
       if (request.method === "DELETE") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         await env.DB
@@ -1063,6 +1242,9 @@ export default {
       // POST new article
       if (request.method === "POST") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         const slug = await generateUniqueSlug(env, data.title);
@@ -1100,6 +1282,9 @@ export default {
 
       // UPDATE existing article
       if (request.method === "PUT") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
 
         const data = await request.json();
 
@@ -1148,6 +1333,9 @@ export default {
 
       // DELETE article
       if (request.method === "DELETE") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
 
         const data = await request.json();
 
@@ -1251,6 +1439,9 @@ export default {
       // DELETE a comment (admin)
       if (request.method === "DELETE") {
 
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
         const data = await request.json();
 
         await env.DB
@@ -1273,6 +1464,9 @@ export default {
     if (url.pathname === "/api/article-comments/admin") {
 
       if (request.method === "GET") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
 
         const { results } = await env.DB
           .prepare(
@@ -1298,6 +1492,9 @@ export default {
     // =====================
 
     if (url.pathname === "/api/banned-ips") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
 
       // GET banned IPs
       if (request.method === "GET") {
@@ -1361,13 +1558,29 @@ export default {
 
     if (url.pathname === "/api/upload-image" && request.method === "POST") {
 
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      const contentType = request.headers.get("Content-Type") || "";
+
+      if (!contentType.startsWith("image/")) {
+        return Response.json({ error: "must be an image" }, { status: 400 });
+      }
+
+      const contentLength = Number(request.headers.get("Content-Length") || 0);
+      const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+
+      if (contentLength > MAX_IMAGE_BYTES) {
+        return Response.json({ error: "image too large (10MB max)" }, { status: 413 });
+      }
+
       const filename = url.searchParams.get("filename") || "upload";
 
       const key = `${Date.now()}-${filename}`;
 
       await env.IMAGES.put(key, request.body, {
         httpMetadata: {
-          contentType: request.headers.get("Content-Type") || "application/octet-stream"
+          contentType: contentType
         }
       });
 
