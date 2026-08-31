@@ -368,7 +368,16 @@ async function requireAdmin(request, env) {
     return Response.json({ error: "admin_not_configured" }, { status: 500 });
   }
 
-  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+  let token = request.headers.get("Cf-Access-Jwt-Assertion");
+
+  if (!token) {
+    // Fallback: check if the browser sent the Cloudflare Access cookie directly
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const match = cookieHeader.match(/CF_Authorization=([^;]+)/);
+    if (match) {
+      token = match[1];
+    }
+  }
 
   if (!token) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
