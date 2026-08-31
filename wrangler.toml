@@ -38,3 +38,7 @@ enabled = true
 
 [observability.logs]
 enabled = true
+
+[vars]
+ACCESS_TEAM_DOMAIN = "autumn-mode-ef6c.cloudflareaccess.com"
+ACCESS_AUD = "d0235f2052a51413391d827847157efd6250705d593fd79c8fdaa7df86051ee6"
