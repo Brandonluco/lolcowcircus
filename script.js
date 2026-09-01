@@ -31,6 +31,7 @@ const chatMessages = document.getElementById("chat-messages");
 const newMessageAlert = document.getElementById("new-message-alert");
 const chatCharCount = document.getElementById("chatCharCount");
 let guestName = localStorage.getItem("chatUsername");
+let activeStreamerName = null;
 
 if (!guestName) {
     guestName = "Guest_" + Math.floor(Math.random() * 1000000);
@@ -113,6 +114,16 @@ const guestColors = [
 
 const guestColor = guestColors[Math.floor(Math.random() * guestColors.length)];
 
+function getChatDisplayName() {
+
+    if (activeStreamerName) {
+        return `${guestName} · Watching ${activeStreamerName}`;
+    }
+
+    return guestName;
+
+}
+
 async function sendMessage() {
 
     console.log("Sending to D1");
@@ -135,7 +146,7 @@ async function sendMessage() {
 
 
     const commentData = {
-        username: guestName,
+        username: getChatDisplayName(),
         message: message,
         color: guestColor,
         created_at: timestamp
@@ -1252,6 +1263,10 @@ async function renderStreamerArticles(container, slug) {
     }
 
     const { streamer, articles } = await response.json();
+
+    // Chat is shared site-wide. Remember which streamer's page this visitor
+    // is on so their next chat message carries that useful context.
+    activeStreamerName = streamer.name;
 
     container.innerHTML = "";
 
