@@ -31,7 +31,7 @@ function tickerLabelFor(streamer) {
 
     const letters = (streamer.name || "").replace(/[^a-zA-Z]/g, "");
 
-    return (letters.slice(0, 3) || "???").toUpperCase();
+    return (letters.slice(0, 4) || "????").toUpperCase();
 
 }
 
