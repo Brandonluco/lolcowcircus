@@ -921,17 +921,17 @@ function createArticleCard(article, options = {}) {
             post.innerHTML = `
                 <header class="post-header">
                     <h1 class="post-title">
-                        <a href="/article/${article.slug}" class="post-title-link">${article.title}</a>
+                        <a href="/article/${article.slug}" class="post-title-link">${escapeForDisplay(article.title)}</a>
                     </h1>
 
                     ${article.streamerSlug ? `
                     <a href="/streamer/${article.streamerSlug}" class="streamer-badge">
-                        📺 ${article.streamerName}
+                        📺 ${escapeForDisplay(article.streamerName)}
                     </a>
                     ` : ""}
 
                     <div class="post-meta">
-                        ${article.date}
+                        ${escapeForDisplay(article.date)}
                     </div>
                 </header>
 
@@ -943,7 +943,7 @@ function createArticleCard(article, options = {}) {
                         if (thumbnailUrl) {
                             return `
                                 <a href="/article/${article.slug}" class="article-video-thumbnail-link">
-                                    <img src="${thumbnailUrl}" class="article-image article-image-excerpt" width="480" height="360">
+                                    <img src="${escapeForDisplay(thumbnailUrl)}" class="article-image article-image-excerpt" width="480" height="360">
                                     <span class="play-button-overlay">▶</span>
                                 </a>
                             `;
@@ -953,13 +953,13 @@ function createArticleCard(article, options = {}) {
                             const dims = (article.image_width && article.image_height)
                                 ? ` width="${article.image_width}" height="${article.image_height}"`
                                 : "";
-                            return `<img src="${article.image}" class="article-image article-image-excerpt"${dims}>`;
+                            return `<img src="${escapeForDisplay(article.image)}" class="article-image article-image-excerpt"${dims}>`;
                         }
 
                         return "";
                     })()}
 
-                    <p class="article-text">${truncateText(article.contentTop, 220)}</p>
+                    <p class="article-text">${escapeForDisplay(truncateText(article.contentTop, 220))}</p>
 
                     <div class="excerpt-footer">
                         <a href="/article/${article.slug}" class="read-more-link">Read More →</a>
@@ -978,38 +978,38 @@ function createArticleCard(article, options = {}) {
         post.innerHTML = `
             <header class="post-header">
                 <h1 class="post-title">
-                    <a href="/article/${article.slug}" class="post-title-link">${article.title}</a>
+                    <a href="/article/${article.slug}" class="post-title-link">${escapeForDisplay(article.title)}</a>
                 </h1>
 
                 ${article.streamerSlug ? `
                 <a href="/streamer/${article.streamerSlug}" class="streamer-badge">
-                    📺 ${article.streamerName}
+                    📺 ${escapeForDisplay(article.streamerName)}
                 </a>
                 ` : ""}
 
                 <div class="post-meta">
-                    ${article.date}
+                    ${escapeForDisplay(article.date)}
                 </div>
             </header>
 
             <div class="post-content">
 
-                <p class="article-text">${article.contentTop}</p>
+                <p class="article-text">${escapeForDisplay(article.contentTop)}</p>
 
 ${article.youtube ? `
 <div class="video-container">
     <iframe 
-        src="${article.youtube}"
-        title="${article.title}"
+        src="${escapeForDisplay(article.youtube)}"
+        title="${escapeForDisplay(article.title)}"
         frameborder="0"
         allowfullscreen>
     </iframe>
 </div>
 ` : ""}
 
-${article.image ? `<img src="${article.image}" class="article-image"${(article.image_width && article.image_height) ? ` width="${article.image_width}" height="${article.image_height}"` : ""}>` : ""}
+${article.image ? `<img src="${escapeForDisplay(article.image)}" class="article-image"${(article.image_width && article.image_height) ? ` width="${article.image_width}" height="${article.image_height}"` : ""}>` : ""}
 
-<p class="article-text">${article.contentBottom}</p>
+<p class="article-text">${escapeForDisplay(article.contentBottom)}</p>
 
 <a href="mailto:undergroundcowtube@gmail.com?subject=Article Report"
 class="report-button">
@@ -1158,8 +1158,8 @@ async function renderStreamerDirectory(container) {
         }
 
         card.innerHTML = `
-            <strong>${streamer.name}</strong>
-            <span class="streamer-directory-meta">${statusIcon} ${streamer.platform || ""}</span>
+            <strong>${escapeForDisplay(streamer.name)}</strong>
+            <span class="streamer-directory-meta">${statusIcon} ${escapeForDisplay(streamer.platform || "")}</span>
             ${stockBadgeHtml}
             ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
             ${liveBadgeHtml}

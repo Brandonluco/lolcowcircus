@@ -754,10 +754,28 @@ export default {
       }
 
 
-      // POST comment
+      // POST comment (blocked if the IP is banned — same list article
+      // comments already check, so a ban actually stops someone site-wide
+      // instead of just on articles)
       if (request.method === "POST") {
 
         const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+
+        const banned = await env.DB
+          .prepare(
+            "SELECT ip_address FROM banned_ips WHERE ip_address = ?"
+          )
+          .bind(ip)
+          .first();
+
+        if (banned) {
+
+          return Response.json(
+            { error: "banned" },
+            { status: 403 }
+          );
+
+        }
 
         if (await isRateLimited(env, ip, "comment", 3)) {
 
@@ -770,6 +788,20 @@ export default {
 
         const data = await request.json();
 
+        // The client trims to 500 chars / 20 chars, but that's only
+        // enforced in the browser — anyone can POST directly to this
+        // endpoint with whatever they want, so the same limits are
+        // enforced again here before anything touches the database.
+        const username = String(data.username || "").slice(0, 20);
+        const message = String(data.message || "").trim().slice(0, 500);
+
+        if (!message) {
+          return Response.json(
+            { error: "message is required" },
+            { status: 400 }
+          );
+        }
+
         await env.DB
           .prepare(
             `
@@ -779,8 +811,8 @@ export default {
             `
           )
           .bind(
-            data.username,
-            data.message,
+            username,
+            message,
             sanitizeColor(data.color),
             data.created_at
           )
