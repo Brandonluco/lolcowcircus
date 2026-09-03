@@ -591,6 +591,10 @@ let headerCollapsed = false;
 const HEADER_COLLAPSE_THRESHOLD = 150;
 const HEADER_EXPAND_THRESHOLD = 5;
 
+// Only present on the homepage — null on any page that doesn't include
+// the bubble nav markup, so this is guarded below rather than assumed.
+const scrollNavBubbles = document.getElementById("scrollNavBubbles");
+
 function syncHeaderState() {
 
     const currentScroll = window.scrollY;
@@ -598,9 +602,15 @@ function syncHeaderState() {
     if (!headerCollapsed && currentScroll > HEADER_COLLAPSE_THRESHOLD) {
         header.classList.remove("expanded");
         headerCollapsed = true;
+        if (scrollNavBubbles) {
+            scrollNavBubbles.classList.add("visible");
+        }
     } else if (headerCollapsed && currentScroll <= HEADER_EXPAND_THRESHOLD) {
         header.classList.add("expanded");
         headerCollapsed = false;
+        if (scrollNavBubbles) {
+            scrollNavBubbles.classList.remove("visible");
+        }
     }
 
 }

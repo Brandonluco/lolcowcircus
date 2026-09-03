@@ -1359,6 +1359,80 @@ body {
     margin-bottom: -600px;
 }
 
+/* Left-side quick-nav bubbles. Same trick as .ad-banner-side: a normal
+   block sitting in the page flow (not fixed), sticky so it holds position
+   once scrolled to, with a negative bottom margin equal to its own height
+   so it doesn't leave a gap in the flow below it. Visibility is opacity/
+   transform only — never display or height — so toggling it on scroll
+   never triggers a layout shift for anything else on the page. */
+.scroll-nav-bubbles {
+    width: 52px;
+
+    position: sticky;
+    top: 80px;
+
+    margin: 0 auto 0 24px;
+    margin-bottom: -184px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 900;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-12px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.scroll-nav-bubbles.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.nav-bubble {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    font-size: 1.4rem;
+    line-height: 1;
+    text-decoration: none;
+    color: #333;
+
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.nav-bubble:hover,
+.nav-bubble:focus-visible {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Needs enough open gutter to the left of the centered 1400px .container
+   to sit in without overlapping real content: roughly the 24px margin +
+   52px bubble + a bit of breathing room, on BOTH sides since the gutter
+   is split evenly. Below this width there just isn't room, same reasoning
+   as .ad-banner-side needing its own (much wider) breakpoint on the right. */
+@media (max-width: 1599px) {
+    .scroll-nav-bubbles {
+        display: none;
+    }
+}
+
 .ad-banner-bottom {
     width: 980px;
     height: 150px;

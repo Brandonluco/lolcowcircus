@@ -49,6 +49,20 @@
 </div>
 <div id="alertBox" class="hidden"></div>
 
+    <!-- Left-side quick-nav bubbles — fade in the moment the banner
+         collapses (see syncHeaderState in script.js), so Streamers/FAQ/
+         Contact stay reachable without scrolling back to the top. No Home
+         bubble since you're already on the homepage here, and this markup
+         only exists on this page — the FAQ/Streamer pages are short
+         enough that the banner and its buttons never leave view. Same
+         sticky-in-flow mechanism as .ad-banner-side just below, so it
+         never shifts anything else on the page. -->
+    <nav class="scroll-nav-bubbles" id="scrollNavBubbles" aria-label="Quick navigation">
+        <a href="/streamers" class="nav-bubble" aria-label="Streamers">📺</a>
+        <a href="FAQ.html" class="nav-bubble" aria-label="FAQ">❓</a>
+        <a href="mailto:underground@cowtube.org" class="nav-bubble" aria-label="Contact">✉️</a>
+    </nav>
+
     <!-- Side archive promo banner — sits in the normal page flow right
          here (below the header/ticker/alert) and uses position: sticky,
          same mechanism as the chat + featured videos sidebar, so it
