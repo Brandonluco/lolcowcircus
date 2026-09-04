@@ -944,6 +944,40 @@ async function unbanIp(ip) {
 
 }
 
+const clearChatButton = document.getElementById("clearChatButton");
+
+if (clearChatButton) {
+
+    clearChatButton.addEventListener("click", async function () {
+
+        const confirmClear = confirm(
+            "Clear the entire chat history for everyone, including people currently connected? This can't be undone."
+        );
+
+        if (!confirmClear) {
+            return;
+        }
+
+        clearChatButton.disabled = true;
+        clearChatButton.textContent = "Clearing...";
+
+        try {
+
+            await fetch("/api/comments/clear", {
+                method: "POST"
+            });
+
+        } finally {
+
+            clearChatButton.disabled = false;
+            clearChatButton.textContent = "🧹 Clear Chat";
+
+        }
+
+    });
+
+}
+
 loadStreamers();
 displayCurrentAlert();
 loadArticles();

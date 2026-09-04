@@ -33,6 +33,28 @@ export class ChatRoom {
     const upgradeHeader = request.headers.get("Upgrade");
 
     if (upgradeHeader !== "websocket") {
+
+      // Internal-only call from the worker's /api/comments/clear admin
+      // endpoint below — Durable Object stubs aren't reachable from the
+      // public internet, only from within this Worker, so this can't be
+      // hit directly by a visitor. Tells everyone currently connected to
+      // clear their chat view live, instead of only wiping it for people
+      // on their next page load.
+      if (request.method === "POST") {
+
+        for (const session of this.sessions) {
+          try {
+            session.send(JSON.stringify({ type: "clear" }));
+          } catch (err) {
+            console.log("Dropping dead session while broadcasting clear:", err);
+            this.sessions.delete(session);
+          }
+        }
+
+        return new Response(null, { status: 204 });
+
+      }
+
       return new Response("Expected websocket", {
         status: 400
       });
@@ -734,6 +756,26 @@ export default {
   return room.fetch(request);
 
 }
+
+    // Admin "Clear Chat" — wipes the persisted history AND tells anyone
+    // currently connected to clear their view live, so a spam flood
+    // doesn't keep sitting there for late arrivals just because it's
+    // already been dealt with for people already in the room.
+    if (url.pathname === "/api/comments/clear" && request.method === "POST") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      await env.DB.prepare("DELETE FROM comments").run();
+
+      const id = env.CHAT_ROOM.idFromName("main");
+      const room = env.CHAT_ROOM.get(id);
+
+      await room.fetch("https://internal/clear", { method: "POST" });
+
+      return Response.json({ success: true });
+
+    }
 
     // =====================
     // COMMENTS API

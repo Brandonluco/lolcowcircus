@@ -261,6 +261,15 @@ function connectChatSocket() {
 
         const comment = JSON.parse(event.data);
 
+        // The admin "Clear Chat" button broadcasts this instead of a
+        // regular comment, so everyone connected right now empties out
+        // immediately instead of only on their next page load.
+        if (comment.type === "clear") {
+            chatMessages.innerHTML = "";
+            newMessageAlert.style.display = "none";
+            return;
+        }
+
         const message = document.createElement("div");
 
         message.classList.add("message");
