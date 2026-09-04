@@ -455,7 +455,7 @@ async function isRateLimited(env, ip, action, cooldownSeconds) {
 
 }
 
-// Checks whether a YouTube channel is currently live using the official
+// Checks a YouTube channel's most recent uploaded video using the official
 // YouTube Data API v3 instead of scraping the channel page. Uses the
 // "uploads playlist" trick to keep this cheap: a channel's uploads playlist
 // ID is always its channel ID with the leading "UC" swapped for "UU", so we
@@ -463,10 +463,16 @@ async function isRateLimited(env, ip, action, cooldownSeconds) {
 // ~2 quota units (1 for the playlist lookup, 1 for the video's own status) —
 // well within the free 10,000 units/day, versus 100 units for a single
 // search.list call.
-async function checkYoutubeLive(channelId, env) {
+//
+// Originally this only reported live status and threw away everything else
+// about the video it had just looked up. It's now also the source for the
+// "new video" badge on the streamer directory — same two API calls, just
+// keeping the publish date too instead of discarding it, so that badge
+// costs nothing extra in quota.
+async function checkYoutubeStatus(channelId, env) {
 
   if (!env.YOUTUBE_API_KEY) {
-    console.log("YOUTUBE_API_KEY not set — skipping YouTube live check");
+    console.log("YOUTUBE_API_KEY not set — skipping YouTube check");
     return null;
   }
 
@@ -499,8 +505,8 @@ async function checkYoutubeLive(channelId, env) {
       return null;
     }
 
-    // 1 unit — read that video's actual broadcast status directly from
-    // YouTube's own data instead of guessing from page HTML.
+    // 1 unit — read that video's actual broadcast status and publish date
+    // directly from YouTube's own data instead of guessing from page HTML.
     const videoRes = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(latestVideoId)}&key=${env.YOUTUBE_API_KEY}`
     );
@@ -512,17 +518,23 @@ async function checkYoutubeLive(channelId, env) {
       return null;
     }
 
+    const snippet = videoData.items?.[0]?.snippet;
+
     // liveBroadcastContent is "live", "upcoming", or "none" — straight from
     // YouTube, not inferred.
-    const liveBroadcastContent = videoData.items?.[0]?.snippet?.liveBroadcastContent;
+    const liveBroadcastContent = snippet?.liveBroadcastContent;
 
     console.log(`YouTube check for ${channelId}: videoId=${latestVideoId} liveBroadcastContent=${liveBroadcastContent}`);
 
-    return liveBroadcastContent === "live" ? latestVideoId : null;
+    return {
+      liveVideoId: liveBroadcastContent === "live" ? latestVideoId : null,
+      latestVideoId: latestVideoId,
+      publishedAt: snippet?.publishedAt || null
+    };
 
   } catch (err) {
 
-    console.log("YouTube live check failed for", channelId, err.message);
+    console.log("YouTube check failed for", channelId, err.message);
     return null;
 
   }
@@ -530,13 +542,15 @@ async function checkYoutubeLive(channelId, env) {
 }
 
 // Loops over every streamer with a YouTube channel ID on file and refreshes
-// their cached live status in D1. Called on a schedule (see wrangler.toml).
+// their cached live status AND latest-video info in D1. Called on a
+// schedule (see wrangler.toml).
 async function updateYoutubeLiveStatuses(env) {
 
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, embed_channel_id, youtube_live_video_id FROM streamers
+      SELECT id, embed_channel_id, youtube_live_video_id, latest_video_id
+      FROM streamers
       WHERE platform LIKE '%youtube%'
       AND embed_channel_id IS NOT NULL
       AND embed_channel_id != ''
@@ -546,15 +560,25 @@ async function updateYoutubeLiveStatuses(env) {
 
   for (const streamer of results) {
 
-    const liveVideoId = await checkYoutubeLive(streamer.embed_channel_id, env);
+    const status = await checkYoutubeStatus(streamer.embed_channel_id, env);
+
+    if (!status) {
+      // API call failed or nothing came back — leave whatever's already
+      // stored alone rather than clobbering it with blanks.
+      continue;
+    }
+
+    const liveChanged = (status.liveVideoId || null) !== (streamer.youtube_live_video_id || null);
+    const newVideoChanged = (status.latestVideoId || null) !== (streamer.latest_video_id || null);
 
     // Skip the write entirely if nothing changed since last check. This is
-    // the common case (a streamer isn't live most of the time), so this
-    // cuts the row-write cost of this cron job down to roughly "once per
-    // streamer per time their live status actually flips", instead of
-    // once per streamer every single time the cron runs (every 5 minutes,
-    // 288 times a day, forever, regardless of whether anything changed).
-    if ((liveVideoId || null) === (streamer.youtube_live_video_id || null)) {
+    // the common case (a streamer isn't live most of the time and doesn't
+    // upload every 5 minutes), so this cuts the row-write cost of this cron
+    // job down to roughly "once per streamer per time something actually
+    // changed", instead of once per streamer every single time the cron
+    // runs (every 5 minutes, 288 times a day, forever, regardless of
+    // whether anything changed).
+    if (!liveChanged && !newVideoChanged) {
       continue;
     }
 
@@ -566,11 +590,20 @@ async function updateYoutubeLiveStatuses(env) {
         UPDATE streamers
         SET youtube_live_video_id = ?,
             youtube_checked_at = ?,
-            last_live_at = CASE WHEN ? IS NOT NULL THEN ? ELSE last_live_at END
+            last_live_at = CASE WHEN ? IS NOT NULL THEN ? ELSE last_live_at END,
+            latest_video_id = ?,
+            latest_video_published_at = ?
         WHERE id = ?
         `
       )
-      .bind(liveVideoId, now, liveVideoId, now, streamer.id)
+      .bind(
+        status.liveVideoId,
+        now,
+        status.liveVideoId, now,
+        status.latestVideoId,
+        status.publishedAt,
+        streamer.id
+      )
       .run();
 
   }

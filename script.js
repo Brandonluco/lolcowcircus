@@ -1160,6 +1160,28 @@ async function renderStreamerDirectory(container) {
         // badge already covers that case, and repeating it would be noise.
         const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
 
+        // "New video" badge: YouTube-only (that's the one platform this can
+        // be checked automatically for — see updateYoutubeLiveStatuses in
+        // worker.js), and only while the video is still within the window,
+        // not just "however long ago their last upload happened to be".
+        const NEW_VIDEO_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+
+        const newVideoAgo = (() => {
+
+            if (!streamer.latest_video_published_at) {
+                return null;
+            }
+
+            const publishedMs = new Date(streamer.latest_video_published_at).getTime();
+
+            if (Date.now() - publishedMs > NEW_VIDEO_WINDOW_MS) {
+                return null;
+            }
+
+            return formatTimeAgo(streamer.latest_video_published_at);
+
+        })();
+
         let liveBadgeHtml = "";
 
         if (isAutoLive) {
@@ -1180,6 +1202,7 @@ async function renderStreamerDirectory(container) {
             <strong>${escapeForDisplay(streamer.name)}</strong>
             <span class="streamer-directory-meta">${statusIcon} ${escapeForDisplay(streamer.platform || "")}</span>
             ${stockBadgeHtml}
+            ${newVideoAgo ? `<span class="streamer-new-video">🆕 New video ${newVideoAgo}</span>` : ""}
             ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
             ${liveBadgeHtml}
         `;
