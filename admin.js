@@ -36,6 +36,10 @@ const featuredVideoTitle = document.getElementById("featuredVideoTitle");
 const featuredVideoEmbed = document.getElementById("featuredVideoEmbed");
 const addFeaturedVideo = document.getElementById("addFeaturedVideo");
 const featuredVideoList = document.getElementById("featuredVideoList");
+const songOfWeekTrack = document.getElementById("songOfWeekTrack");
+const updateSongOfWeek = document.getElementById("updateSongOfWeek");
+const clearSongOfWeek = document.getElementById("clearSongOfWeek");
+const currentSongOfWeek = document.getElementById("currentSongOfWeek");
 
 
 function escapeForDisplay(str) {
@@ -309,8 +313,8 @@ function displayStreamers() {
         const div = document.createElement("div");
 
         div.innerHTML = `
-            <strong>${streamer.name}</strong>${streamer.ticker ? ` <span class="admin-note">(${escapeForDisplay(streamer.ticker)})</span>` : ""}
-            <p>Platform: ${streamer.platform || "(none set)"}</p>
+            <strong>${escapeForDisplay(streamer.name)}</strong>${streamer.ticker ? ` <span class="admin-note">(${escapeForDisplay(streamer.ticker)})</span>` : ""}
+            <p>Platform: ${escapeForDisplay(streamer.platform || "(none set)")}</p>
             <p>Status: ${streamer.status}</p>
             ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
             ${Number(streamer.featured_pinned) === 1 ? `<p>📌 Pinned as homepage featured streamer</p>` : ""}
@@ -433,6 +437,21 @@ async function displayCurrentAlert() {
 
 }
 
+async function displayCurrentSongOfWeek() {
+
+    const response = await fetch("/api/song-of-the-week");
+
+    const song = await response.json();
+
+    if (!song) {
+        currentSongOfWeek.textContent = "No song set";
+        return;
+    }
+
+    currentSongOfWeek.textContent = "Current: " + song.track_id;
+
+}
+
 async function loadFeaturedVideos() {
 
     const response = await fetch("/api/featured-videos");
@@ -499,13 +518,13 @@ function displayArticles() {
 div.classList.add("admin-article-card");
 
  div.innerHTML = `
-    <strong>${article.title}</strong>
+    <strong>${escapeForDisplay(article.title)}</strong>
 
-    ${article.streamerName ? `<p>📺 ${article.streamerName}</p>` : ""}
+    ${article.streamerName ? `<p>📺 ${escapeForDisplay(article.streamerName)}</p>` : ""}
 
-    <p>${article.date}</p>
+    <p>${escapeForDisplay(article.date)}</p>
 
-    <p>${article.contentTop}</p>
+    <p>${escapeForDisplay(article.contentTop)}</p>
 
     ${article.image ? "<p>🖼 Image attached</p>" : ""}
 
@@ -665,6 +684,41 @@ clearAlert.addEventListener("click", async function() {
 
 
     displayCurrentAlert();
+
+});
+
+updateSongOfWeek.addEventListener("click", async function() {
+
+    const response = await fetch("/api/song-of-the-week", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ trackId: songOfWeekTrack.value })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        alert(result.error || "Couldn't set that as the song of the week.");
+        return;
+    }
+
+    songOfWeekTrack.value = "";
+
+    displayCurrentSongOfWeek();
+
+});
+
+
+clearSongOfWeek.addEventListener("click", async function() {
+
+    await fetch("/api/song-of-the-week", {
+        method: "DELETE"
+    });
+
+
+    displayCurrentSongOfWeek();
 
 });
 
@@ -980,6 +1034,7 @@ if (clearChatButton) {
 
 loadStreamers();
 displayCurrentAlert();
+displayCurrentSongOfWeek();
 loadArticles();
 loadFeaturedVideos();
 displayArticleComments();

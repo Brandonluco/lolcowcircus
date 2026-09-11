@@ -371,6 +371,29 @@ body {
     padding: 10px 0;
 }
 
+/* Deliberately NOT sized to match .featured-videos-box — that box's height
+   depends on how many videos are currently posted, so it isn't a stable
+   thing to size against. This is built around Spotify's own fixed 80px
+   "compact" single-track embed instead, which stays the same size
+   regardless of what else exists on the connected Spotify account (the
+   week-to-week playlist that track also gets added to is never embedded
+   here, only linked to the one current track). */
+.spotify-box {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 20px;
+}
+.spotify-box .chat-header {
+    margin: -20px -20px 15px;
+    border-radius: 8px 8px 0 0;
+}
+.spotify-embed {
+    display: block;
+    width: 100%;
+    border-radius: 8px;
+}
+
 .stock-graph-box {
     display: block;
     background-color: #ffffff;

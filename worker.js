@@ -252,6 +252,27 @@ function sanitizeColor(color) {
 
 }
 
+// Spotify track IDs are always 22 base62 characters. Accepts whatever an
+// admin might realistically paste — the bare ID, a full share link (with
+// or without the ?si=... tracking param), or a spotify:track:... URI — and
+// pulls just the ID out of it. Returns null for anything that doesn't
+// contain a real-looking one, so garbage never reaches the database and
+// this can't become an injection point later just because someone pastes
+// something unexpected here.
+function extractSpotifyTrackId(input) {
+
+  const value = String(input || "").trim();
+
+  const urlMatch = value.match(/track[/:]([A-Za-z0-9]{22})/);
+
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+
+  return /^[A-Za-z0-9]{22}$/.test(value) ? value : null;
+
+}
+
 // =====================================================================
 // CLOUDFLARE ACCESS VERIFICATION (admin routes)
 // =====================================================================
@@ -959,6 +980,88 @@ export default {
         await env.DB
           .prepare(
             "DELETE FROM alerts"
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
+
+    // =====================
+    // SONG OF THE WEEK API
+    // =====================
+
+    if (url.pathname === "/api/song-of-the-week") {
+
+      // GET current pick
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM song_of_the_week ORDER BY id DESC LIMIT 1"
+          )
+          .all();
+
+        if (results.length === 0) {
+          return Response.json(null);
+        }
+
+        return Response.json(results[0]);
+
+      }
+
+
+      // POST new pick
+      if (request.method === "POST") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
+        const data = await request.json();
+
+        const trackId = extractSpotifyTrackId(data.trackId);
+
+        if (!trackId) {
+          return Response.json({
+            error: "Couldn't find a valid Spotify track ID in that — paste the track's share link or just its ID."
+          }, {
+            status: 400
+          });
+        }
+
+        await env.DB
+          .prepare(
+            "INSERT INTO song_of_the_week (track_id) VALUES (?)"
+          )
+          .bind(
+            trackId
+          )
+          .run();
+
+
+        return Response.json({
+          success: true,
+          trackId: trackId
+        });
+
+      }
+
+
+      // DELETE current pick
+      if (request.method === "DELETE") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
+        await env.DB
+          .prepare(
+            "DELETE FROM song_of_the_week"
           )
           .run();
 

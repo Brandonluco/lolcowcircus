@@ -133,6 +133,31 @@
 </section>
 
 <section>
+    <h2>Song of the Week</h2>
+
+    <p class="admin-note">
+        Paste the track's Spotify share link (Share → Copy Song Link) or
+        just its ID — either works. This is a single track only, shown on
+        the homepage sidebar; it's separate from whatever playlist that
+        track might also live in, so the playlist growing over the year
+        never affects this.
+    </p>
+
+    <div id="currentSongOfWeek">Loading...</div>
+
+    <input type="text" id="songOfWeekTrack" placeholder="Spotify track link or ID" aria-label="Spotify track link or ID">
+
+    <button type="button" id="updateSongOfWeek">
+        Set Song of the Week
+    </button>
+
+    <button type="button" id="clearSongOfWeek">
+        Clear
+    </button>
+
+</section>
+
+<section>
     <h2>Current Streamers</h2>
 
     <div id="streamerList"></div>

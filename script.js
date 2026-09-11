@@ -544,20 +544,80 @@ async function loadFeaturedVideos() {
 
     }
 
-    list.innerHTML = videos.map(video => `
+    list.innerHTML = videos.map(video => {
+
+        const safeSrc = getSafeYoutubeEmbedSrc(video.embed_url);
+
+        if (!safeSrc) {
+            return "";
+        }
+
+        return `
         <div class="featured-video-item">
             <div class="video-container">
-                <iframe src="${video.embed_url}"
+                <iframe src="${safeSrc}"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen></iframe>
             </div>
-            ${video.title ? `<p class="featured-video-title">${video.title}</p>` : ""}
+            ${video.title ? `<p class="featured-video-title">${escapeForDisplay(video.title)}</p>` : ""}
         </div>
-    `).join("");
+    `;
+
+    }).join("");
 
 }
 
 loadFeaturedVideos();
+
+// The server already only ever stores a validated 22-character Spotify
+// track ID (see extractSpotifyTrackId in worker.js), but this box builds
+// a src="..." attribute from whatever that endpoint returns, so it
+// re-checks the shape here too rather than trusting the API response —
+// the same reasoning as getSafeYoutubeEmbedSrc above.
+function getSafeSpotifyTrackSrc(trackId) {
+
+    if (typeof trackId !== "string" || !/^[A-Za-z0-9]{22}$/.test(trackId)) {
+        return null;
+    }
+
+    return `https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`;
+
+}
+
+async function loadSongOfWeek() {
+
+    const box = document.getElementById("spotify-box");
+    const embed = document.getElementById("spotify-embed");
+
+    if (!box || !embed) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/song-of-the-week");
+        const song = await response.json();
+
+        const safeSrc = song ? getSafeSpotifyTrackSrc(song.track_id) : null;
+
+        if (!safeSrc) {
+            box.classList.add("hidden");
+            return;
+        }
+
+        embed.src = safeSrc;
+        box.classList.remove("hidden");
+
+    } catch (err) {
+
+        console.log("Failed to load song of the week:", err.message);
+        box.classList.add("hidden");
+
+    }
+
+}
+
+loadSongOfWeek();
 
 async function loadStockGraph() {
 
@@ -641,7 +701,7 @@ function attachArticleSearch(container, placeholder) {
         <input
             type="text"
             class="article-search-input"
-            placeholder="${placeholder}"
+            placeholder="${escapeForDisplay(placeholder)}"
         >
         <p class="article-search-empty" style="display:none;">No articles match your search.</p>
     `;
@@ -1015,10 +1075,10 @@ function createArticleCard(article, options = {}) {
 
                 <p class="article-text">${escapeForDisplay(article.contentTop)}</p>
 
-${article.youtube ? `
+${getSafeYoutubeEmbedSrc(article.youtube) ? `
 <div class="video-container">
     <iframe 
-        src="${escapeForDisplay(article.youtube)}"
+        src="${getSafeYoutubeEmbedSrc(article.youtube)}"
         title="${escapeForDisplay(article.title)}"
         frameborder="0"
         allowfullscreen>
@@ -1279,7 +1339,7 @@ function renderStreamerWatchBlock(streamer) {
     // Everything else: no reliable embed, so link out instead of showing something broken.
     if (profileUrl) {
         return `
-            <a class="watch-live-button" href="${profileUrl}" target="_blank" rel="noopener">
+            <a class="watch-live-button" href="${escapeForDisplay(profileUrl)}" target="_blank" rel="noopener">
                 ▶ Watch ${escapeForDisplay(streamer.name)} live on ${escapeForDisplay(streamer.platform || "their channel")}
             </a>
         `;
@@ -1293,6 +1353,38 @@ function escapeForDisplay(str) {
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+}
+
+// Escaping a YouTube link before it goes into src="..." stops someone from
+// breaking out of the attribute with a quote, but it doesn't stop the link
+// itself from being something other than YouTube — e.g. a "javascript:"
+// URL, which an iframe will happily execute. These fields (article embeds,
+// featured videos) are typed into the admin panel, but that text can
+// originate from a third party's emailed submission that got copy-pasted
+// in, so only ever render it if it's actually shaped like a YouTube embed
+// link — otherwise drop it.
+function getSafeYoutubeEmbedSrc(url) {
+
+    if (typeof url !== "string" || url.trim() === "") {
+        return null;
+    }
+
+    try {
+
+        const parsed = new URL(url, window.location.origin);
+
+        const isYoutubeHost = parsed.hostname === "www.youtube.com" || parsed.hostname === "youtube.com";
+
+        if (isYoutubeHost && parsed.pathname.startsWith("/embed/") && parsed.protocol === "https:") {
+            return parsed.href;
+        }
+
+    } catch (err) {
+        // Not a parseable URL at all.
+    }
+
+    return null;
+
 }
 
 async function renderStreamerArticles(container, slug) {

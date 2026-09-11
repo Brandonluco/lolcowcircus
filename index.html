@@ -164,6 +164,33 @@
 
     </div>
 
+    <!-- Fixed at Spotify's own 80px "compact" embed height no matter what —
+         this always points at ONE track (this week's pick), never at the
+         playlist it also gets added to. The playlist is for the eventual
+         year-end "CowTube 2026" roundup and is never embedded here, so its
+         size can never affect this box or make an old pick look current.
+         Set from the admin panel's Song of the Week section, not by hand —
+         see loadSongOfWeek() in script.js. Starts hidden so nothing shows
+         (and no empty iframe request fires) until that's loaded, or stays
+         hidden permanently if no track is currently set. -->
+    <div class="spotify-box hidden" id="spotify-box">
+
+        <div class="chat-header">
+            🎵 Song of the Week
+        </div>
+
+        <iframe
+            class="spotify-embed"
+            id="spotify-embed"
+            width="100%"
+            height="80"
+            frameborder="0"
+            allow="clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy">
+        </iframe>
+
+    </div>
+
     <a href="stock.html" class="stock-graph-box" aria-label="View full streamer stock history">
 
         <div class="chat-header">
