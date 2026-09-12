@@ -394,6 +394,105 @@ body {
     border-radius: 8px;
 }
 
+/* Deliberately its own height rather than matching anything else in the
+   sidebar — a crossword needs real room for the grid and clue list, and
+   squeezing it down to match the Spotify strip or Stock square would just
+   make it unplayable. 500px was sized against Puzzel.org's own live
+   preview when the puzzle was built, not calculated from anything else
+   on this page. */
+.guess-streamer-box {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 20px;
+}
+.guess-streamer-box .chat-header {
+    margin: -20px -20px 15px;
+    border-radius: 8px 8px 0 0;
+}
+.guess-streamer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+}
+.expand-puzzle-button {
+    background: none;
+    border: 1px solid #d5d5d5;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+}
+.expand-puzzle-button:hover {
+    background: #ffffff;
+    border-color: #bbbbbb;
+}
+.guess-streamer-embed {
+    display: block;
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* "Expand" overlay — a big, closable, rounded panel over a dimmed page,
+   not real browser fullscreen. Sized to fill most of the viewport without
+   touching the edges, so the dimmed background stays visible and clicking
+   it closes the puzzle. */
+.puzzle-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    z-index: 2000;
+}
+.puzzle-modal-content {
+    position: relative;
+    width: min(700px, 100%);
+    height: min(85vh, 850px);
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.puzzle-modal-frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+.puzzle-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+.puzzle-modal-close:hover {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+@media (max-width: 600px) {
+    .puzzle-modal-overlay {
+        padding: 12px;
+    }
+}
+
 .stock-graph-box {
     display: block;
     background-color: #ffffff;

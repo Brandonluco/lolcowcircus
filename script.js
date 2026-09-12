@@ -619,6 +619,75 @@ async function loadSongOfWeek() {
 
 loadSongOfWeek();
 
+// "Guess the Streamer" expand-to-modal — not real browser Fullscreen API
+// (that hides the rest of the page entirely with square corners); this is
+// a big, closable, rounded overlay over a dimmed page instead, per how
+// this was asked for. Reads the small embed's own src rather than hard-
+// coding the Puzzel URL a second time here, so there's exactly one place
+// (index.html) that ever needs updating if the puzzle changes.
+const expandGuessStreamer = document.getElementById("expandGuessStreamer");
+const puzzleModalOverlay = document.getElementById("puzzleModalOverlay");
+const puzzleModalFrame = document.getElementById("puzzleModalFrame");
+const puzzleModalClose = document.getElementById("puzzleModalClose");
+const guessStreamerEmbed = document.getElementById("guessStreamerEmbed");
+
+function openPuzzleModal() {
+
+    if (!puzzleModalOverlay || !puzzleModalFrame || !guessStreamerEmbed) {
+        return;
+    }
+
+    puzzleModalFrame.src = guessStreamerEmbed.src;
+    puzzleModalOverlay.classList.remove("hidden");
+
+}
+
+function closePuzzleModal() {
+
+    if (!puzzleModalOverlay || !puzzleModalFrame) {
+        return;
+    }
+
+    puzzleModalOverlay.classList.add("hidden");
+
+    // Clearing the src (rather than just hiding the overlay) actually
+    // stops the puzzle running in the background once closed, and means
+    // it loads fresh next time rather than carrying over odd mid-solve
+    // iframe state.
+    puzzleModalFrame.src = "";
+
+}
+
+if (expandGuessStreamer) {
+    expandGuessStreamer.addEventListener("click", openPuzzleModal);
+}
+
+if (puzzleModalClose) {
+    puzzleModalClose.addEventListener("click", closePuzzleModal);
+}
+
+if (puzzleModalOverlay) {
+
+    // Clicking the dimmed backdrop itself (not the puzzle panel) closes
+    // it — checking event.target here rather than adding a separate
+    // click handler on the panel is what stops a click inside the puzzle
+    // from bubbling up and closing it by accident.
+    puzzleModalOverlay.addEventListener("click", (event) => {
+        if (event.target === puzzleModalOverlay) {
+            closePuzzleModal();
+        }
+    });
+
+}
+
+document.addEventListener("keydown", (event) => {
+
+    if (event.key === "Escape" && puzzleModalOverlay && !puzzleModalOverlay.classList.contains("hidden")) {
+        closePuzzleModal();
+    }
+
+});
+
 async function loadStockGraph() {
 
     const container = document.getElementById("stock-graph-mini");
