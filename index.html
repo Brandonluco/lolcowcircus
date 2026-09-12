@@ -247,25 +247,6 @@
         <p>&copy; 2026 CowTube. All rights reserved.</p>
     </footer>
 
-    <!-- Script file for our anti-copy features later -->
-  <script src="streamers.js"></script>
-<script src="data.js"></script>
-<script src="stock-charts.js"></script>
-<script src="script.js"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     <!-- Big, closable overlay for the Sudoku game — not a real Fullscreen
          API call (that covers the whole screen with no visible background
          or rounded corners), just a centered panel so the grid is easier
@@ -273,14 +254,25 @@
          itself is built once by script.js and injected into
          #sudokuModalRoot; opening/closing this just toggles visibility, so
          in-progress solving state is never lost by opening and closing it.
-         Placed at the end of the page, outside the sidebar, so its overlay
-         isn't affected by the sidebar's own sticky positioning. -->
+         Placed here, above the script tags below, on purpose: script.js
+         reads this element with getElementById() the instant it runs, and
+         a <script src="..."> tag executes immediately as the browser
+         parses it — before anything further down the page is read. If
+         this markup sat below the script tags instead, it wouldn't exist
+         in the DOM yet when script.js looked for it, and every click on
+         "Play Today's Puzzle" would silently do nothing at all. -->
     <div class="puzzle-modal-overlay hidden" id="puzzleModalOverlay">
         <div class="puzzle-modal-content puzzle-modal-content-sudoku">
             <button type="button" class="puzzle-modal-close" id="puzzleModalClose" aria-label="Close puzzle">×</button>
             <div id="sudokuModalRoot" class="sudoku-modal-root"></div>
         </div>
     </div>
+
+    <!-- Script file for our anti-copy features later -->
+  <script src="streamers.js"></script>
+<script src="data.js"></script>
+<script src="stock-charts.js"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
