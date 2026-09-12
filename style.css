@@ -394,52 +394,44 @@ body {
     border-radius: 8px;
 }
 
-/* Deliberately its own height rather than matching anything else in the
-   sidebar — a crossword needs real room for the grid and clue list, and
-   squeezing it down to match the Spotify strip or Stock square would just
-   make it unplayable. 500px was sized against Puzzel.org's own live
-   preview when the puzzle was built, not calculated from anything else
-   on this page. */
-.guess-streamer-box {
+/* No fixed height chase here on purpose — this is just a teaser tile
+   linking to the actual game in the modal below, so it only needs to fit
+   a line of text and a button, not a full playable board. */
+.sudoku-box {
     background-color: #ffffff;
     border: 1px solid #eaeaea;
     border-radius: 8px;
     padding: 20px;
 }
-.guess-streamer-box .chat-header {
+.sudoku-box .chat-header {
     margin: -20px -20px 15px;
     border-radius: 8px 8px 0 0;
 }
-.guess-streamer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    text-align: left;
+.sudoku-teaser-text {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.4;
 }
-.expand-puzzle-button {
-    background: none;
-    border: 1px solid #d5d5d5;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.8rem;
+.sudoku-play-button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #8B5A2B;
+    color: #ffffff;
     font-weight: 600;
-    color: #444;
+    font-size: 0.95rem;
     cursor: pointer;
 }
-.expand-puzzle-button:hover {
-    background: #ffffff;
-    border-color: #bbbbbb;
-}
-.guess-streamer-embed {
-    display: block;
-    width: 100%;
-    border-radius: 8px;
+.sudoku-play-button:hover {
+    background: #74491f;
 }
 
 /* "Expand" overlay — a big, closable, rounded panel over a dimmed page,
    not real browser fullscreen. Sized to fill most of the viewport without
    touching the edges, so the dimmed background stays visible and clicking
-   it closes the puzzle. */
+   it closes the puzzle. Generic chrome, reused by whatever's inside it. */
 .puzzle-modal-overlay {
     position: fixed;
     inset: 0;
@@ -453,17 +445,17 @@ body {
 .puzzle-modal-content {
     position: relative;
     width: min(700px, 100%);
-    height: min(85vh, 850px);
+    max-height: 90vh;
     background: #ffffff;
     border-radius: 16px;
-    overflow: hidden;
+    overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    padding: 50px 24px 24px;
 }
-.puzzle-modal-frame {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border: none;
+/* Sudoku doesn't need the full 700px width a crossword did — a narrower,
+   more square panel reads better for a number grid plus number pad. */
+.puzzle-modal-content-sudoku {
+    width: min(460px, 100%);
 }
 .puzzle-modal-close {
     position: absolute;
@@ -491,6 +483,115 @@ body {
     .puzzle-modal-overlay {
         padding: 12px;
     }
+}
+
+/* ==========================
+   DAILY SUDOKU
+   ========================== */
+
+.sudoku-modal-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+.sudoku-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #222;
+    text-align: center;
+}
+.sudoku-status {
+    min-height: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    color: #666;
+}
+.sudoku-status.solved {
+    color: #1e7e34;
+}
+.sudoku-board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    width: min(85vw, 380px);
+    aspect-ratio: 1 / 1;
+    border: 2px solid #333333;
+    background: #333333;
+    gap: 1px;
+}
+.sudoku-cell {
+    background: #ffffff;
+    border: none;
+    font-size: clamp(0.9rem, 4vw, 1.2rem);
+    font-weight: 600;
+    color: #2a5db0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+.sudoku-cell.given {
+    color: #222222;
+    background: #f2f2f2;
+    cursor: default;
+}
+.sudoku-cell.selected {
+    background: #cfe3ff;
+}
+.sudoku-cell.conflict {
+    background: #fddede;
+    color: #a32d2d;
+}
+/* Marks the 3x3 box boundaries — set from JS per-cell rather than fiddly
+   nth-child math on a flat 81-cell grid, since a cell's row/col are known
+   at build time anyway. */
+.sudoku-cell.box-border-right {
+    box-shadow: inset -2px 0 0 #333333;
+}
+.sudoku-cell.box-border-bottom {
+    box-shadow: inset 0 -2px 0 #333333;
+}
+.sudoku-cell.box-border-right.box-border-bottom {
+    box-shadow: inset -2px 0 0 #333333, inset 0 -2px 0 #333333;
+}
+.sudoku-numpad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    width: min(85vw, 380px);
+}
+.sudoku-numpad-button {
+    padding: 10px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    background: #f8f8f8;
+    cursor: pointer;
+}
+.sudoku-numpad-button:hover {
+    background: #eeeeee;
+}
+.sudoku-clear-button {
+    color: #a32d2d;
+}
+.sudoku-actions {
+    display: flex;
+    gap: 10px;
+}
+.sudoku-action-button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #d5d5d5;
+    background: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sudoku-action-button:hover {
+    background: #f5f5f5;
 }
 
 .stock-graph-box {

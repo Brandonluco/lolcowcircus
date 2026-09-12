@@ -619,47 +619,605 @@ async function loadSongOfWeek() {
 
 loadSongOfWeek();
 
-// "Guess the Streamer" expand-to-modal — not real browser Fullscreen API
-// (that hides the rest of the page entirely with square corners); this is
-// a big, closable, rounded overlay over a dimmed page instead, per how
-// this was asked for. Reads the small embed's own src rather than hard-
-// coding the Puzzel URL a second time here, so there's exactly one place
-// (index.html) that ever needs updating if the puzzle changes.
-const expandGuessStreamer = document.getElementById("expandGuessStreamer");
-const puzzleModalOverlay = document.getElementById("puzzleModalOverlay");
-const puzzleModalFrame = document.getElementById("puzzleModalFrame");
-const puzzleModalClose = document.getElementById("puzzleModalClose");
-const guessStreamerEmbed = document.getElementById("guessStreamerEmbed");
+// =====================================================================
+// DAILY SUDOKU
+//
+// Fully self-hosted — no third-party puzzle service, nothing to
+// subscribe to, no content to write. A new valid, uniquely-solvable
+// puzzle is generated right here in the browser, seeded off today's UTC
+// date, so every visitor sees the same puzzle today and a new one
+// appears automatically tomorrow with zero action from anyone. Progress
+// is saved to localStorage per day so a refresh doesn't lose solving
+// progress, and naturally starts fresh the next day since the storage
+// key changes.
+// =====================================================================
 
-function openPuzzleModal() {
+// --- Seeded random number generator ----------------------------------
+// mulberry32: small, well-known PRNG. Using a *seeded* RNG (instead of
+// Math.random()) is what makes "the same puzzle for everyone today"
+// possible at all — Math.random() would give every visitor a different
+// board with no way to reproduce it.
+function mulberry32(seed) {
+    return function () {
+        seed |= 0;
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
 
-    if (!puzzleModalOverlay || !puzzleModalFrame || !guessStreamerEmbed) {
+function hashStringToSeed(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+    }
+    return hash;
+}
+
+// UTC, not local time — so the puzzle rolls over at the same moment for
+// every visitor regardless of their own timezone, rather than some
+// people getting tomorrow's puzzle hours ahead of others.
+function getTodayDateKey() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function shuffle(array, rng) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+// --- Sudoku generation --------------------------------------------------
+
+function isSafe(grid, row, col, value) {
+
+    for (let i = 0; i < 9; i++) {
+        if (grid[row][i] === value || grid[i][col] === value) {
+            return false;
+        }
+    }
+
+    const boxRow = row - (row % 3);
+    const boxCol = col - (col % 3);
+
+    for (let r = boxRow; r < boxRow + 3; r++) {
+        for (let c = boxCol; c < boxCol + 3; c++) {
+            if (grid[r][c] === value) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+
+}
+
+// Randomized backtracking fill — produces one complete, valid solved
+// board, shuffled by the seeded RNG so the same date always regenerates
+// the same board.
+function generateSolvedGrid(rng) {
+
+    const grid = Array.from({ length: 9 }, () => Array(9).fill(0));
+
+    function fill(pos) {
+
+        if (pos === 81) {
+            return true;
+        }
+
+        const row = Math.floor(pos / 9);
+        const col = pos % 9;
+
+        const candidates = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rng);
+
+        for (const value of candidates) {
+
+            if (isSafe(grid, row, col, value)) {
+
+                grid[row][col] = value;
+
+                if (fill(pos + 1)) {
+                    return true;
+                }
+
+                grid[row][col] = 0;
+
+            }
+
+        }
+
+        return false;
+
+    }
+
+    fill(0);
+
+    return grid;
+
+}
+
+// Counts solutions for a partial grid, stopping as soon as it finds more
+// than one — used only to confirm a puzzle still has exactly one
+// solution while digging holes below, so a full count is never needed,
+// just "one" vs "more than one".
+function countSolutions(grid, limit) {
+
+    let count = 0;
+
+    function solve() {
+
+        if (count >= limit) {
+            return;
+        }
+
+        let row = -1;
+        let col = -1;
+
+        outer:
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (grid[r][c] === 0) {
+                    row = r;
+                    col = c;
+                    break outer;
+                }
+            }
+        }
+
+        if (row === -1) {
+            count++;
+            return;
+        }
+
+        for (let value = 1; value <= 9; value++) {
+
+            if (count >= limit) {
+                return;
+            }
+
+            if (isSafe(grid, row, col, value)) {
+                grid[row][col] = value;
+                solve();
+                grid[row][col] = 0;
+            }
+
+        }
+
+    }
+
+    solve();
+
+    return count;
+
+}
+
+// Removes cells one at a time, in a seeded (reproducible) random order,
+// only keeping each removal if the puzzle still has exactly one
+// solution afterward. This is what makes it a fair puzzle with one
+// correct answer, rather than an ambiguous grid with several.
+function digHoles(solution, rng, targetHoles) {
+
+    const puzzle = solution.map((row) => row.slice());
+
+    const positions = [];
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            positions.push([r, c]);
+        }
+    }
+
+    shuffle(positions, rng);
+
+    let holes = 0;
+
+    for (const [row, col] of positions) {
+
+        if (holes >= targetHoles) {
+            break;
+        }
+
+        const backup = puzzle[row][col];
+        puzzle[row][col] = 0;
+
+        if (countSolutions(puzzle.map((r) => r.slice()), 2) === 1) {
+            holes++;
+        } else {
+            puzzle[row][col] = backup;
+        }
+
+    }
+
+    return puzzle;
+
+}
+
+function generateDailyPuzzle(dateKey) {
+
+    const rng = mulberry32(hashStringToSeed(dateKey));
+
+    const solution = generateSolvedGrid(rng);
+
+    // 45 holes leaves 36 given clues, landing around "medium" difficulty.
+    // Not guaranteed to hit exactly 45 (digHoles stops early once it runs
+    // out of removals that keep a unique solution), but gets close.
+    const puzzle = digHoles(solution, rng, 45);
+
+    return { puzzle, solution };
+
+}
+
+// --- Board state ---------------------------------------------------------
+
+let sudokuSolution = null;
+let sudokuGiven = null;
+let sudokuUserGrid = null;
+let sudokuRevealed = false;
+let sudokuSelected = null;
+let sudokuDateKey = null;
+let sudokuInitialized = false;
+
+function sudokuStorageKey() {
+    return "cowtube-sudoku-" + sudokuDateKey;
+}
+
+function saveSudokuProgress() {
+
+    try {
+        localStorage.setItem(sudokuStorageKey(), JSON.stringify({
+            userGrid: sudokuUserGrid,
+            revealed: sudokuRevealed
+        }));
+    } catch (err) {
+        // Private browsing / storage disabled — just play without saving.
+    }
+
+}
+
+function restoreSudokuProgress() {
+
+    try {
+
+        const saved = localStorage.getItem(sudokuStorageKey());
+
+        if (!saved) {
+            return;
+        }
+
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed.userGrid) && parsed.userGrid.length === 9) {
+            sudokuUserGrid = parsed.userGrid;
+        }
+
+        sudokuRevealed = Boolean(parsed.revealed);
+
+    } catch (err) {
+        // Corrupt or inaccessible storage — just start fresh.
+    }
+
+}
+
+// Removes any previous days' saved progress so localStorage doesn't grow
+// forever — today's key is left alone.
+function cleanUpOldSudokuStorage() {
+
+    try {
+
+        const keysToRemove = [];
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith("cowtube-sudoku-") && key !== sudokuStorageKey()) {
+                keysToRemove.push(key);
+            }
+        }
+
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+
+    } catch (err) {
+        // Not critical if this can't run.
+    }
+
+}
+
+function loadOrCreateTodaysPuzzle() {
+
+    sudokuDateKey = getTodayDateKey();
+
+    const { puzzle, solution } = generateDailyPuzzle(sudokuDateKey);
+
+    sudokuSolution = solution;
+    sudokuGiven = puzzle.map((row) => row.map((value) => value !== 0));
+    sudokuUserGrid = puzzle.map((row) => row.slice());
+    sudokuRevealed = false;
+    sudokuSelected = null;
+
+    restoreSudokuProgress();
+    cleanUpOldSudokuStorage();
+
+}
+
+// --- Rules / conflict checking --------------------------------------
+
+function getSudokuConflicts() {
+
+    const conflicts = new Set();
+
+    function checkGroup(cells) {
+
+        const seen = new Map();
+
+        for (const [r, c] of cells) {
+
+            const value = sudokuUserGrid[r][c];
+
+            if (value === 0) {
+                continue;
+            }
+
+            if (seen.has(value)) {
+                conflicts.add(r + "," + c);
+                conflicts.add(seen.get(value));
+            } else {
+                seen.set(value, r + "," + c);
+            }
+
+        }
+
+    }
+
+    for (let i = 0; i < 9; i++) {
+
+        const rowCells = [];
+        const colCells = [];
+
+        for (let j = 0; j < 9; j++) {
+            rowCells.push([i, j]);
+            colCells.push([j, i]);
+        }
+
+        checkGroup(rowCells);
+        checkGroup(colCells);
+
+    }
+
+    for (let boxRow = 0; boxRow < 9; boxRow += 3) {
+        for (let boxCol = 0; boxCol < 9; boxCol += 3) {
+
+            const boxCells = [];
+
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    boxCells.push([r, c]);
+                }
+            }
+
+            checkGroup(boxCells);
+
+        }
+    }
+
+    return conflicts;
+
+}
+
+function isSudokuComplete() {
+
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (sudokuUserGrid[r][c] === 0) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+
+}
+
+// --- Rendering ---------------------------------------------------------
+
+function renderSudokuStatus() {
+
+    const status = document.getElementById("sudokuStatus");
+
+    if (!status) {
         return;
     }
 
-    puzzleModalFrame.src = guessStreamerEmbed.src;
+    if (sudokuRevealed) {
+        status.textContent = "Solution revealed — a new puzzle is ready tomorrow.";
+        status.classList.remove("solved");
+        return;
+    }
+
+    const conflicts = getSudokuConflicts();
+
+    if (isSudokuComplete() && conflicts.size === 0) {
+        status.textContent = "🎉 Solved! Nice work — see you tomorrow for a new one.";
+        status.classList.add("solved");
+    } else {
+        status.textContent = "";
+        status.classList.remove("solved");
+    }
+
+}
+
+function renderSudokuBoard() {
+
+    const board = document.getElementById("sudokuBoard");
+
+    if (!board) {
+        return;
+    }
+
+    const conflicts = sudokuRevealed ? new Set() : getSudokuConflicts();
+
+    board.innerHTML = "";
+
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "sudoku-cell";
+
+            const value = sudokuUserGrid[r][c];
+            cell.textContent = value === 0 ? "" : String(value);
+
+            if (sudokuGiven[r][c]) {
+                cell.classList.add("given");
+            }
+
+            if (sudokuSelected && sudokuSelected.row === r && sudokuSelected.col === c) {
+                cell.classList.add("selected");
+            }
+
+            if (conflicts.has(r + "," + c)) {
+                cell.classList.add("conflict");
+            }
+
+            // Marks the 3x3 box boundaries — computed here from the cell's
+            // own row/col rather than fragile nth-child CSS math on a flat
+            // 81-cell grid.
+            if (c % 3 === 2 && c !== 8) {
+                cell.classList.add("box-border-right");
+            }
+
+            if (r % 3 === 2 && r !== 8) {
+                cell.classList.add("box-border-bottom");
+            }
+
+            cell.setAttribute(
+                "aria-label",
+                "Row " + (r + 1) + " column " + (c + 1) + (value ? ", " + value : ", empty")
+            );
+
+            cell.addEventListener("click", () => {
+                sudokuSelected = { row: r, col: c };
+                renderSudokuBoard();
+            });
+
+            board.appendChild(cell);
+
+        }
+    }
+
+    renderSudokuStatus();
+
+}
+
+function setSudokuCellValue(value) {
+
+    if (!sudokuSelected || sudokuRevealed) {
+        return;
+    }
+
+    const { row, col } = sudokuSelected;
+
+    if (sudokuGiven[row][col]) {
+        return;
+    }
+
+    sudokuUserGrid[row][col] = value;
+
+    saveSudokuProgress();
+    renderSudokuBoard();
+
+}
+
+function revealSudokuSolution() {
+
+    sudokuUserGrid = sudokuSolution.map((row) => row.slice());
+    sudokuRevealed = true;
+
+    saveSudokuProgress();
+    renderSudokuBoard();
+
+}
+
+function buildSudokuUI() {
+
+    const root = document.getElementById("sudokuModalRoot");
+
+    if (!root) {
+        return;
+    }
+
+    root.innerHTML = `
+        <div class="sudoku-title">🔢 Daily Sudoku</div>
+        <div class="sudoku-status" id="sudokuStatus"></div>
+        <div class="sudoku-board" id="sudokuBoard"></div>
+        <div class="sudoku-numpad" id="sudokuNumpad">
+            ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" class="sudoku-numpad-button" data-value="${n}">${n}</button>`).join("")}
+            <button type="button" class="sudoku-numpad-button sudoku-clear-button" data-value="0">⌫</button>
+        </div>
+        <div class="sudoku-actions">
+            <button type="button" class="sudoku-action-button" id="sudokuRevealButton">Reveal Solution</button>
+        </div>
+    `;
+
+    root.querySelector("#sudokuNumpad").addEventListener("click", (event) => {
+
+        const button = event.target.closest("[data-value]");
+
+        if (!button) {
+            return;
+        }
+
+        setSudokuCellValue(Number(button.dataset.value));
+
+    });
+
+    root.querySelector("#sudokuRevealButton").addEventListener("click", revealSudokuSolution);
+
+    renderSudokuBoard();
+
+}
+
+// Generation runs once, lazily, the first time someone actually opens the
+// puzzle — not on every homepage load — so visitors who never touch it
+// never pay the (small, but non-zero) cost of generating a board.
+function ensureTodaysPuzzleLoaded() {
+
+    if (!sudokuInitialized || getTodayDateKey() !== sudokuDateKey) {
+        loadOrCreateTodaysPuzzle();
+        buildSudokuUI();
+        sudokuInitialized = true;
+    }
+
+}
+
+// --- Modal open/close (generic overlay, same chrome the crossword used) ---
+
+const openSudoku = document.getElementById("openSudoku");
+const puzzleModalOverlay = document.getElementById("puzzleModalOverlay");
+const puzzleModalClose = document.getElementById("puzzleModalClose");
+
+function openPuzzleModal() {
+
+    if (!puzzleModalOverlay) {
+        return;
+    }
+
+    ensureTodaysPuzzleLoaded();
     puzzleModalOverlay.classList.remove("hidden");
 
 }
 
 function closePuzzleModal() {
 
-    if (!puzzleModalOverlay || !puzzleModalFrame) {
-        return;
+    if (puzzleModalOverlay) {
+        puzzleModalOverlay.classList.add("hidden");
     }
-
-    puzzleModalOverlay.classList.add("hidden");
-
-    // Clearing the src (rather than just hiding the overlay) actually
-    // stops the puzzle running in the background once closed, and means
-    // it loads fresh next time rather than carrying over odd mid-solve
-    // iframe state.
-    puzzleModalFrame.src = "";
 
 }
 
-if (expandGuessStreamer) {
-    expandGuessStreamer.addEventListener("click", openPuzzleModal);
+if (openSudoku) {
+    openSudoku.addEventListener("click", openPuzzleModal);
 }
 
 if (puzzleModalClose) {
@@ -680,11 +1238,46 @@ if (puzzleModalOverlay) {
 
 }
 
+// Keyboard support — lets a selected cell be filled with the number row
+// directly, and Escape close the modal, without needing the mouse for
+// everything. Digit/arrow keys only act while the puzzle is actually
+// open, so typing elsewhere on the page is never intercepted.
 document.addEventListener("keydown", (event) => {
 
     if (event.key === "Escape" && puzzleModalOverlay && !puzzleModalOverlay.classList.contains("hidden")) {
         closePuzzleModal();
+        return;
     }
+
+    if (!puzzleModalOverlay || puzzleModalOverlay.classList.contains("hidden")) {
+        return;
+    }
+
+    if (event.key >= "1" && event.key <= "9") {
+        setSudokuCellValue(Number(event.key));
+        return;
+    }
+
+    if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
+        setSudokuCellValue(0);
+        return;
+    }
+
+    if (!sudokuSelected) {
+        return;
+    }
+
+    let { row, col } = sudokuSelected;
+
+    if (event.key === "ArrowUp") row = Math.max(0, row - 1);
+    else if (event.key === "ArrowDown") row = Math.min(8, row + 1);
+    else if (event.key === "ArrowLeft") col = Math.max(0, col - 1);
+    else if (event.key === "ArrowRight") col = Math.min(8, col + 1);
+    else return;
+
+    event.preventDefault();
+    sudokuSelected = { row, col };
+    renderSudokuBoard();
 
 });
 
