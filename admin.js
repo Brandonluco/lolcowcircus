@@ -40,6 +40,10 @@ const songOfWeekTrack = document.getElementById("songOfWeekTrack");
 const updateSongOfWeek = document.getElementById("updateSongOfWeek");
 const clearSongOfWeek = document.getElementById("clearSongOfWeek");
 const currentSongOfWeek = document.getElementById("currentSongOfWeek");
+const reelOfWeekUrl = document.getElementById("reelOfWeekUrl");
+const updateReelOfWeek = document.getElementById("updateReelOfWeek");
+const clearReelOfWeek = document.getElementById("clearReelOfWeek");
+const currentReelOfWeek = document.getElementById("currentReelOfWeek");
 
 
 function escapeForDisplay(str) {
@@ -452,6 +456,21 @@ async function displayCurrentSongOfWeek() {
 
 }
 
+async function displayCurrentReelOfWeek() {
+
+    const response = await fetch("/api/reel-of-the-week");
+
+    const reel = await response.json();
+
+    if (!reel) {
+        currentReelOfWeek.textContent = "No reel set";
+        return;
+    }
+
+    currentReelOfWeek.textContent = "Current: " + reel.reel_url;
+
+}
+
 async function loadFeaturedVideos() {
 
     const response = await fetch("/api/featured-videos");
@@ -719,6 +738,41 @@ clearSongOfWeek.addEventListener("click", async function() {
 
 
     displayCurrentSongOfWeek();
+
+});
+
+updateReelOfWeek.addEventListener("click", async function() {
+
+    const response = await fetch("/api/reel-of-the-week", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ reelUrl: reelOfWeekUrl.value })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        alert(result.error || "Couldn't set that as the reel of the week.");
+        return;
+    }
+
+    reelOfWeekUrl.value = "";
+
+    displayCurrentReelOfWeek();
+
+});
+
+
+clearReelOfWeek.addEventListener("click", async function() {
+
+    await fetch("/api/reel-of-the-week", {
+        method: "DELETE"
+    });
+
+
+    displayCurrentReelOfWeek();
 
 });
 
@@ -1035,6 +1089,7 @@ if (clearChatButton) {
 loadStreamers();
 displayCurrentAlert();
 displayCurrentSongOfWeek();
+displayCurrentReelOfWeek();
 loadArticles();
 loadFeaturedVideos();
 displayArticleComments();

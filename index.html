@@ -164,6 +164,27 @@
 
     </div>
 
+    <!-- Real Instagram embed (their own official embed.js, same mechanism
+         as embedding a tweet) — not a custom video player, so there's no
+         video hosting/licensing to worry about on our end, and it always
+         reflects whatever privacy/availability state the reel currently
+         has on Instagram itself. Reels are vertical, so this box runs
+         tall — that's expected and fine, it's meant to be the full-height
+         embed rather than a cropped preview. Set from the admin panel's
+         Reel of the Week section, not by hand — see loadReelOfWeek() in
+         script.js. Starts hidden so nothing shows (and embed.js never
+         loads) until that's fetched, or stays hidden permanently if no
+         reel is currently set. -->
+    <div class="reel-box hidden" id="reel-box">
+
+        <div class="chat-header">
+            🎬 Reel of the Week
+        </div>
+
+        <div id="reel-embed-container" class="reel-embed-container"></div>
+
+    </div>
+
     <!-- Fixed at Spotify's own 80px "compact" embed height no matter what —
          this always points at ONE track (this week's pick), never at the
          playlist it also gets added to. The playlist is for the eventual

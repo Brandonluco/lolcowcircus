@@ -378,6 +378,28 @@ body {
    regardless of what else exists on the connected Spotify account (the
    week-to-week playlist that track also gets added to is never embedded
    here, only linked to the one current track). */
+/* Instagram's own embed.js sizes and builds the actual iframe itself once
+   it runs — this box just gives it a card to sit in and a place to grow.
+   No fixed height on purpose: reels are vertical, so however tall
+   Instagram renders it is fine, the box just wraps around it. */
+.reel-box {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 20px;
+}
+.reel-box .chat-header {
+    margin: -20px -20px 15px;
+    border-radius: 8px 8px 0 0;
+}
+.reel-embed-container {
+    display: flex;
+    justify-content: center;
+}
+.reel-embed-container iframe {
+    max-width: 100%;
+}
+
 .spotify-box {
     background-color: #ffffff;
     border: 1px solid #eaeaea;

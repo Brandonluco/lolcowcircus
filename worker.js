@@ -273,6 +273,44 @@ function extractSpotifyTrackId(input) {
 
 }
 
+// Accepts whatever an admin might realistically paste for a reel — the
+// normal instagram.com/reel/... link, one with a tracking query string
+// still attached, an instagram.com/reels/... link, or a share link missing
+// "www." — and, if it's genuinely a real Instagram reel/post permalink,
+// returns a clean, canonical https://www.instagram.com/reel/<code>/ URL.
+// Returns null for anything else (a random URL, plain text, a javascript:
+// URI, etc.), so garbage — or something crafted to break out of the embed
+// markup — never reaches the database and this can't become an injection
+// point later just because someone pastes something unexpected here.
+function extractInstagramReelUrl(input) {
+
+  const value = String(input || "").trim();
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "instagram.com" && host !== "www.instagram.com") {
+    return null;
+  }
+
+  const match = parsed.pathname.match(/^\/(?:reel|reels|p)\/([A-Za-z0-9_-]+)\/?$/);
+  if (!match) {
+    return null;
+  }
+
+  return `https://www.instagram.com/reel/${match[1]}/`;
+
+}
+
 // =====================================================================
 // CLOUDFLARE ACCESS VERIFICATION (admin routes)
 // =====================================================================
@@ -1062,6 +1100,88 @@ export default {
         await env.DB
           .prepare(
             "DELETE FROM song_of_the_week"
+          )
+          .run();
+
+
+        return Response.json({
+          success: true
+        });
+
+      }
+
+    }
+
+
+    // =====================
+    // REEL OF THE WEEK API
+    // =====================
+
+    if (url.pathname === "/api/reel-of-the-week") {
+
+      // GET current pick
+      if (request.method === "GET") {
+
+        const { results } = await env.DB
+          .prepare(
+            "SELECT * FROM reel_of_the_week ORDER BY id DESC LIMIT 1"
+          )
+          .all();
+
+        if (results.length === 0) {
+          return Response.json(null);
+        }
+
+        return Response.json(results[0]);
+
+      }
+
+
+      // POST new pick
+      if (request.method === "POST") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
+        const data = await request.json();
+
+        const reelUrl = extractInstagramReelUrl(data.reelUrl);
+
+        if (!reelUrl) {
+          return Response.json({
+            error: "Couldn't find a valid Instagram reel link in that — paste the reel's share link (instagram.com/reel/...)."
+          }, {
+            status: 400
+          });
+        }
+
+        await env.DB
+          .prepare(
+            "INSERT INTO reel_of_the_week (reel_url) VALUES (?)"
+          )
+          .bind(
+            reelUrl
+          )
+          .run();
+
+
+        return Response.json({
+          success: true,
+          reelUrl: reelUrl
+        });
+
+      }
+
+
+      // DELETE current pick
+      if (request.method === "DELETE") {
+
+        const authError = await requireAdmin(request, env);
+        if (authError) return authError;
+
+        await env.DB
+          .prepare(
+            "DELETE FROM reel_of_the_week"
           )
           .run();
 

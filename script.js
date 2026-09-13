@@ -619,6 +619,135 @@ async function loadSongOfWeek() {
 
 loadSongOfWeek();
 
+// The server already only ever stores a URL it validated itself (see
+// extractInstagramReelUrl in worker.js), but this box builds a real DOM
+// attribute from whatever that endpoint returns, so it re-checks the
+// shape here too rather than trusting the API response — the same
+// reasoning as getSafeSpotifyTrackSrc above. Only a genuine
+// instagram.com reel/post permalink is ever accepted.
+function getSafeInstagramReelUrl(reelUrl) {
+
+    if (typeof reelUrl !== "string") {
+        return null;
+    }
+
+    let parsed;
+    try {
+        parsed = new URL(reelUrl);
+    } catch {
+        return null;
+    }
+
+    if (parsed.protocol !== "https:") {
+        return null;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    if (host !== "instagram.com" && host !== "www.instagram.com") {
+        return null;
+    }
+
+    if (!/^\/(?:reel|reels|p)\/[A-Za-z0-9_-]+\/?$/.test(parsed.pathname)) {
+        return null;
+    }
+
+    return parsed.href;
+
+}
+
+// Loads Instagram's own official embed script (the same mechanism sites
+// use to embed a tweet) exactly once, then re-runs it any time a new
+// blockquote needs turning into an actual player — Instagram's script
+// only auto-processes blockquotes present when it first loads, so later
+// ones need that explicit re-run.
+function loadInstagramEmbedScript() {
+
+    return new Promise(function(resolve) {
+
+        if (window.instgrm && window.instgrm.Embeds) {
+            resolve();
+            return;
+        }
+
+        const existing = document.getElementById("instagram-embed-script");
+        if (existing) {
+            existing.addEventListener("load", () => resolve());
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.id = "instagram-embed-script";
+        script.async = true;
+        script.src = "https://www.instagram.com/embed.js";
+        script.addEventListener("load", () => resolve());
+        document.body.appendChild(script);
+
+    });
+
+}
+
+async function loadReelOfWeek() {
+
+    const box = document.getElementById("reel-box");
+    const container = document.getElementById("reel-embed-container");
+
+    if (!box || !container) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/reel-of-the-week");
+        const reel = await response.json();
+
+        const safeUrl = reel ? getSafeInstagramReelUrl(reel.reel_url) : null;
+
+        if (!safeUrl) {
+            box.classList.add("hidden");
+            return;
+        }
+
+        container.innerHTML = "";
+
+        const blockquote = document.createElement("blockquote");
+        blockquote.className = "instagram-media";
+        blockquote.setAttribute("data-instgrm-permalink", safeUrl);
+        blockquote.setAttribute("data-instgrm-version", "14");
+        blockquote.style.margin = "0";
+        blockquote.style.maxWidth = "100%";
+        blockquote.style.minWidth = "326px";
+
+        // Plain-text fallback link, shown only until embed.js replaces
+        // this blockquote with the real player — built with textContent
+        // and a real anchor, not innerHTML, so safeUrl (already checked
+        // above) never gets a second chance to matter for safety here.
+        const fallback = document.createElement("p");
+        const link = document.createElement("a");
+        link.href = safeUrl;
+        link.textContent = "View this reel on Instagram";
+        fallback.appendChild(link);
+        blockquote.appendChild(fallback);
+
+        container.appendChild(blockquote);
+
+        await loadInstagramEmbedScript();
+        if (window.instgrm && window.instgrm.Embeds) {
+            window.instgrm.Embeds.process();
+        }
+
+        box.classList.remove("hidden");
+
+    } catch (err) {
+
+        console.log("Failed to load reel of the week:", err.message);
+        box.classList.add("hidden");
+
+    }
+
+}
+
+loadReelOfWeek();
+
 // =====================================================================
 // DAILY SUDOKU
 //
