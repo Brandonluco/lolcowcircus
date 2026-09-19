@@ -460,23 +460,37 @@ async function displayCurrentSongOfWeek() {
 
 async function displayCurrentCreatorOfWeek() {
 
-    const response = await fetch("/api/creator-of-the-week");
+    try {
 
-    const creator = await response.json();
+        const response = await fetch("/api/creator-of-the-week");
 
-    if (!creator) {
-        currentCreatorOfWeek.textContent = "No creator set";
-        return;
+        if (!response.ok) {
+            currentCreatorOfWeek.textContent = "Couldn't load this (server error — is the creator_of_the_week D1 table created yet?)";
+            return;
+        }
+
+        const creator = await response.json();
+
+        if (!creator) {
+            currentCreatorOfWeek.textContent = "No creator set";
+            return;
+        }
+
+        currentCreatorOfWeek.textContent = "Current: " + creator.creator_name + " — " + creator.reel_url;
+
+        // Pre-fill name/profile so swapping in a new video from the same
+        // creator (the common case) doesn't mean retyping them every time —
+        // only the reel link field is left blank, since that's what actually
+        // changes day to day.
+        creatorOfWeekName.value = creator.creator_name;
+        creatorOfWeekProfileUrl.value = creator.profile_url || "";
+
+    } catch (err) {
+
+        currentCreatorOfWeek.textContent = "Couldn't load this — check the console for details.";
+        console.log("Failed to load creator of the week:", err.message);
+
     }
-
-    currentCreatorOfWeek.textContent = "Current: " + creator.creator_name + " — " + creator.reel_url;
-
-    // Pre-fill name/profile so swapping in a new video from the same
-    // creator (the common case) doesn't mean retyping them every time —
-    // only the reel link field is left blank, since that's what actually
-    // changes day to day.
-    creatorOfWeekName.value = creator.creator_name;
-    creatorOfWeekProfileUrl.value = creator.profile_url || "";
 
 }
 
@@ -752,28 +766,37 @@ clearSongOfWeek.addEventListener("click", async function() {
 
 updateCreatorOfWeek.addEventListener("click", async function() {
 
-    const response = await fetch("/api/creator-of-the-week", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            creatorName: creatorOfWeekName.value,
-            profileUrl: creatorOfWeekProfileUrl.value,
-            reelUrl: creatorOfWeekReelUrl.value
-        })
-    });
+    try {
 
-    const result = await response.json();
+        const response = await fetch("/api/creator-of-the-week", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                creatorName: creatorOfWeekName.value,
+                profileUrl: creatorOfWeekProfileUrl.value,
+                reelUrl: creatorOfWeekReelUrl.value
+            })
+        });
 
-    if (!response.ok) {
-        alert(result.error || "Couldn't set that as the creator of the week.");
-        return;
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.error || "Couldn't set that as the creator of the week.");
+            return;
+        }
+
+        creatorOfWeekReelUrl.value = "";
+
+        displayCurrentCreatorOfWeek();
+
+    } catch (err) {
+
+        alert("Something went wrong setting that — check the console for details. (If you haven't created the creator_of_the_week D1 table yet, that's the most likely cause.)");
+        console.log("Failed to set creator of the week:", err.message);
+
     }
-
-    creatorOfWeekReelUrl.value = "";
-
-    displayCurrentCreatorOfWeek();
 
 });
 
