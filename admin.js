@@ -40,10 +40,12 @@ const songOfWeekTrack = document.getElementById("songOfWeekTrack");
 const updateSongOfWeek = document.getElementById("updateSongOfWeek");
 const clearSongOfWeek = document.getElementById("clearSongOfWeek");
 const currentSongOfWeek = document.getElementById("currentSongOfWeek");
-const reelOfWeekUrl = document.getElementById("reelOfWeekUrl");
-const updateReelOfWeek = document.getElementById("updateReelOfWeek");
-const clearReelOfWeek = document.getElementById("clearReelOfWeek");
-const currentReelOfWeek = document.getElementById("currentReelOfWeek");
+const creatorOfWeekName = document.getElementById("creatorOfWeekName");
+const creatorOfWeekProfileUrl = document.getElementById("creatorOfWeekProfileUrl");
+const creatorOfWeekReelUrl = document.getElementById("creatorOfWeekReelUrl");
+const updateCreatorOfWeek = document.getElementById("updateCreatorOfWeek");
+const clearCreatorOfWeek = document.getElementById("clearCreatorOfWeek");
+const currentCreatorOfWeek = document.getElementById("currentCreatorOfWeek");
 
 
 function escapeForDisplay(str) {
@@ -456,18 +458,25 @@ async function displayCurrentSongOfWeek() {
 
 }
 
-async function displayCurrentReelOfWeek() {
+async function displayCurrentCreatorOfWeek() {
 
-    const response = await fetch("/api/reel-of-the-week");
+    const response = await fetch("/api/creator-of-the-week");
 
-    const reel = await response.json();
+    const creator = await response.json();
 
-    if (!reel) {
-        currentReelOfWeek.textContent = "No reel set";
+    if (!creator) {
+        currentCreatorOfWeek.textContent = "No creator set";
         return;
     }
 
-    currentReelOfWeek.textContent = "Current: " + reel.reel_url;
+    currentCreatorOfWeek.textContent = "Current: " + creator.creator_name + " — " + creator.reel_url;
+
+    // Pre-fill name/profile so swapping in a new video from the same
+    // creator (the common case) doesn't mean retyping them every time —
+    // only the reel link field is left blank, since that's what actually
+    // changes day to day.
+    creatorOfWeekName.value = creator.creator_name;
+    creatorOfWeekProfileUrl.value = creator.profile_url || "";
 
 }
 
@@ -741,38 +750,45 @@ clearSongOfWeek.addEventListener("click", async function() {
 
 });
 
-updateReelOfWeek.addEventListener("click", async function() {
+updateCreatorOfWeek.addEventListener("click", async function() {
 
-    const response = await fetch("/api/reel-of-the-week", {
+    const response = await fetch("/api/creator-of-the-week", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ reelUrl: reelOfWeekUrl.value })
+        body: JSON.stringify({
+            creatorName: creatorOfWeekName.value,
+            profileUrl: creatorOfWeekProfileUrl.value,
+            reelUrl: creatorOfWeekReelUrl.value
+        })
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-        alert(result.error || "Couldn't set that as the reel of the week.");
+        alert(result.error || "Couldn't set that as the creator of the week.");
         return;
     }
 
-    reelOfWeekUrl.value = "";
+    creatorOfWeekReelUrl.value = "";
 
-    displayCurrentReelOfWeek();
+    displayCurrentCreatorOfWeek();
 
 });
 
 
-clearReelOfWeek.addEventListener("click", async function() {
+clearCreatorOfWeek.addEventListener("click", async function() {
 
-    await fetch("/api/reel-of-the-week", {
+    await fetch("/api/creator-of-the-week", {
         method: "DELETE"
     });
 
+    creatorOfWeekName.value = "";
+    creatorOfWeekProfileUrl.value = "";
+    creatorOfWeekReelUrl.value = "";
 
-    displayCurrentReelOfWeek();
+    displayCurrentCreatorOfWeek();
 
 });
 
@@ -1089,7 +1105,7 @@ if (clearChatButton) {
 loadStreamers();
 displayCurrentAlert();
 displayCurrentSongOfWeek();
-displayCurrentReelOfWeek();
+displayCurrentCreatorOfWeek();
 loadArticles();
 loadFeaturedVideos();
 displayArticleComments();

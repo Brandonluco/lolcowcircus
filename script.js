@@ -655,6 +655,41 @@ function getSafeInstagramReelUrl(reelUrl) {
 
 }
 
+// Same re-check reasoning as getSafeInstagramReelUrl, for the optional
+// creator-profile-link field — this one is built into an href attribute
+// too, so it's worth re-validating rather than trusting the API blindly.
+// Empty/missing input isn't an error here, since this field is optional —
+// it just means no link.
+function getSafeInstagramProfileUrl(profileUrl) {
+
+    if (typeof profileUrl !== "string" || !profileUrl) {
+        return null;
+    }
+
+    let parsed;
+    try {
+        parsed = new URL(profileUrl);
+    } catch {
+        return null;
+    }
+
+    if (parsed.protocol !== "https:") {
+        return null;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    if (host !== "instagram.com" && host !== "www.instagram.com") {
+        return null;
+    }
+
+    if (!/^\/[A-Za-z0-9_.]{1,30}\/?$/.test(parsed.pathname)) {
+        return null;
+    }
+
+    return parsed.href;
+
+}
+
 // Loads Instagram's own official embed script (the same mechanism sites
 // use to embed a tweet) exactly once, then re-runs it any time a new
 // blockquote needs turning into an actual player — Instagram's script
@@ -686,25 +721,43 @@ function loadInstagramEmbedScript() {
 
 }
 
-async function loadReelOfWeek() {
+async function loadCreatorOfWeek() {
 
-    const box = document.getElementById("reel-box");
+    const box = document.getElementById("creator-box");
+    const nameDisplay = document.getElementById("creator-name-display");
     const container = document.getElementById("reel-embed-container");
 
-    if (!box || !container) {
+    if (!box || !nameDisplay || !container) {
         return;
     }
 
     try {
 
-        const response = await fetch("/api/reel-of-the-week");
-        const reel = await response.json();
+        const response = await fetch("/api/creator-of-the-week");
+        const creator = await response.json();
 
-        const safeUrl = reel ? getSafeInstagramReelUrl(reel.reel_url) : null;
+        const safeUrl = creator ? getSafeInstagramReelUrl(creator.reel_url) : null;
 
-        if (!safeUrl) {
+        if (!creator || !safeUrl) {
             box.classList.add("hidden");
             return;
+        }
+
+        // Name is always plain text via textContent — never innerHTML —
+        // so whatever the admin typed can't be interpreted as markup.
+        // The optional profile link is separately re-validated above and
+        // only ever used as an href attribute, never inserted as HTML.
+        nameDisplay.textContent = "";
+        const safeProfileUrl = getSafeInstagramProfileUrl(creator.profile_url);
+        if (safeProfileUrl) {
+            const nameLink = document.createElement("a");
+            nameLink.href = safeProfileUrl;
+            nameLink.target = "_blank";
+            nameLink.rel = "noopener noreferrer";
+            nameLink.textContent = creator.creator_name;
+            nameDisplay.appendChild(nameLink);
+        } else {
+            nameDisplay.textContent = creator.creator_name;
         }
 
         container.innerHTML = "";
@@ -739,14 +792,14 @@ async function loadReelOfWeek() {
 
     } catch (err) {
 
-        console.log("Failed to load reel of the week:", err.message);
+        console.log("Failed to load creator of the week:", err.message);
         box.classList.add("hidden");
 
     }
 
 }
 
-loadReelOfWeek();
+loadCreatorOfWeek();
 
 // =====================================================================
 // DAILY SUDOKU

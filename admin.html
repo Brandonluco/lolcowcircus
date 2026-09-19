@@ -158,23 +158,28 @@
 </section>
 
 <section>
-    <h2>Reel of the Week</h2>
+    <h2>Instagram Cow of the Week</h2>
 
     <p class="admin-note">
-        Paste the reel's Instagram share link (from the Share button on the
-        reel itself, or copied from the address bar) — shown as a full
-        embedded reel on the homepage sidebar.
+        Feature an Instagram creator, then swap in a new video from them
+        any time you like — this isn't locked to once a week, update it as
+        often as you want. Profile link is optional; if you leave it
+        blank, the creator's name just shows as plain text.
     </p>
 
-    <div id="currentReelOfWeek">Loading...</div>
+    <div id="currentCreatorOfWeek">Loading...</div>
 
-    <input type="text" id="reelOfWeekUrl" placeholder="Instagram reel link" aria-label="Instagram reel link">
+    <input type="text" id="creatorOfWeekName" placeholder="Creator name (e.g. Jane Doe or @handle)" aria-label="Creator name">
 
-    <button type="button" id="updateReelOfWeek">
-        Set Reel of the Week
+    <input type="text" id="creatorOfWeekProfileUrl" placeholder="Instagram profile link (optional)" aria-label="Instagram profile link (optional)">
+
+    <input type="text" id="creatorOfWeekReelUrl" placeholder="Instagram reel link" aria-label="Instagram reel link">
+
+    <button type="button" id="updateCreatorOfWeek">
+        Set Creator of the Week
     </button>
 
-    <button type="button" id="clearReelOfWeek">
+    <button type="button" id="clearCreatorOfWeek">
         Clear
     </button>
 

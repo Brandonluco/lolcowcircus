@@ -311,6 +311,51 @@ function extractInstagramReelUrl(input) {
 
 }
 
+// Optional field on Creator of the Week: a link to the creator's own
+// Instagram profile, so their name in that box can point somewhere. Same
+// reasoning as extractInstagramReelUrl above — only a genuine
+// instagram.com/<username>/ profile URL is accepted, reserved path
+// segments that aren't usernames (reel/reels/p/explore) are rejected so
+// this can't be pointed at something other than an actual profile, and
+// anything else (including empty input, since this field is optional)
+// returns null rather than storing garbage.
+function extractInstagramProfileUrl(input) {
+
+  const value = String(input || "").trim();
+  if (!value) {
+    return null;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "instagram.com" && host !== "www.instagram.com") {
+    return null;
+  }
+
+  const match = parsed.pathname.match(/^\/([A-Za-z0-9_.]{1,30})\/?$/);
+  if (!match) {
+    return null;
+  }
+
+  const reserved = ["reel", "reels", "p", "explore", "stories", "accounts"];
+  if (reserved.includes(match[1].toLowerCase())) {
+    return null;
+  }
+
+  return `https://www.instagram.com/${match[1]}/`;
+
+}
+
 // =====================================================================
 // CLOUDFLARE ACCESS VERIFICATION (admin routes)
 // =====================================================================
@@ -1113,18 +1158,18 @@ export default {
     }
 
 
-    // =====================
-    // REEL OF THE WEEK API
-    // =====================
+    // =========================
+    // CREATOR OF THE WEEK API
+    // =========================
 
-    if (url.pathname === "/api/reel-of-the-week") {
+    if (url.pathname === "/api/creator-of-the-week") {
 
       // GET current pick
       if (request.method === "GET") {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM reel_of_the_week ORDER BY id DESC LIMIT 1"
+            "SELECT * FROM creator_of_the_week ORDER BY id DESC LIMIT 1"
           )
           .all();
 
@@ -1137,13 +1182,25 @@ export default {
       }
 
 
-      // POST new pick
+      // POST new pick (or swap in a new video for the same creator —
+      // this is meant to be updated as often as the admin likes, not
+      // locked to once a week)
       if (request.method === "POST") {
 
         const authError = await requireAdmin(request, env);
         if (authError) return authError;
 
         const data = await request.json();
+
+        const creatorName = String(data.creatorName || "").trim();
+
+        if (!creatorName) {
+          return Response.json({
+            error: "Enter a creator name."
+          }, {
+            status: 400
+          });
+        }
 
         const reelUrl = extractInstagramReelUrl(data.reelUrl);
 
@@ -1155,11 +1212,28 @@ export default {
           });
         }
 
+        // Optional — if something was entered but it isn't a real
+        // instagram.com/<username>/ profile link, reject rather than
+        // silently dropping it, so a typo doesn't just vanish.
+        let profileUrl = null;
+        if (String(data.profileUrl || "").trim()) {
+          profileUrl = extractInstagramProfileUrl(data.profileUrl);
+          if (!profileUrl) {
+            return Response.json({
+              error: "That profile link doesn't look like a real Instagram profile (instagram.com/username/) — leave it blank if you'd rather skip it."
+            }, {
+              status: 400
+            });
+          }
+        }
+
         await env.DB
           .prepare(
-            "INSERT INTO reel_of_the_week (reel_url) VALUES (?)"
+            "INSERT INTO creator_of_the_week (creator_name, profile_url, reel_url) VALUES (?, ?, ?)"
           )
           .bind(
+            creatorName,
+            profileUrl,
             reelUrl
           )
           .run();
@@ -1167,6 +1241,8 @@ export default {
 
         return Response.json({
           success: true,
+          creatorName: creatorName,
+          profileUrl: profileUrl,
           reelUrl: reelUrl
         });
 
@@ -1181,7 +1257,7 @@ export default {
 
         await env.DB
           .prepare(
-            "DELETE FROM reel_of_the_week"
+            "DELETE FROM creator_of_the_week"
           )
           .run();
 
