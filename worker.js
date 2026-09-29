@@ -1162,6 +1162,13 @@ export default {
     // CREATOR OF THE WEEK API
     // =========================
 
+    // History note: every pick ever set stays in this table forever — POST
+    // only ever INSERTs a new row, it never overwrites or removes old ones.
+    // is_current marks which single row (if any) is the one currently
+    // shown on the homepage; "current" is just a flag, not a separate
+    // table, so /history and /leaderboard below can draw on the exact same
+    // data as the homepage without needing to be kept in sync with it.
+
     if (url.pathname === "/api/creator-of-the-week") {
 
       // GET current pick
@@ -1169,7 +1176,7 @@ export default {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM creator_of_the_week ORDER BY id DESC LIMIT 1"
+            "SELECT * FROM creator_of_the_week WHERE is_current = 1 ORDER BY id DESC LIMIT 1"
           )
           .all();
 
@@ -1184,7 +1191,8 @@ export default {
 
       // POST new pick (or swap in a new video for the same creator —
       // this is meant to be updated as often as the admin likes, not
-      // locked to once a week)
+      // locked to once a week). The old current row isn't deleted, just
+      // unmarked, so it still shows up in history/leaderboard afterward.
       if (request.method === "POST") {
 
         const authError = await requireAdmin(request, env);
@@ -1227,16 +1235,25 @@ export default {
           }
         }
 
-        await env.DB
-          .prepare(
-            "INSERT INTO creator_of_the_week (creator_name, profile_url, reel_url) VALUES (?, ?, ?)"
-          )
-          .bind(
+        // Batched so this can't ever land on two "current" rows at once
+        // (e.g. two admin tabs saving around the same moment) — both
+        // statements commit together or not at all.
+        await env.DB.batch([
+
+          env.DB.prepare(
+            "UPDATE creator_of_the_week SET is_current = 0 WHERE is_current = 1"
+          ),
+
+          env.DB.prepare(
+            "INSERT INTO creator_of_the_week (creator_name, profile_url, reel_url, featured_at, is_current) VALUES (?, ?, ?, ?, 1)"
+          ).bind(
             creatorName,
             profileUrl,
-            reelUrl
+            reelUrl,
+            Date.now()
           )
-          .run();
+
+        ]);
 
 
         return Response.json({
@@ -1249,7 +1266,9 @@ export default {
       }
 
 
-      // DELETE current pick
+      // DELETE — clears the CURRENT pick only (so the homepage box goes
+      // back to hidden). History is never erased this way; past picks
+      // stay exactly as they were, just with nothing currently flagged.
       if (request.method === "DELETE") {
 
         const authError = await requireAdmin(request, env);
@@ -1257,7 +1276,7 @@ export default {
 
         await env.DB
           .prepare(
-            "DELETE FROM creator_of_the_week"
+            "UPDATE creator_of_the_week SET is_current = 0 WHERE is_current = 1"
           )
           .run();
 
@@ -1267,6 +1286,46 @@ export default {
         });
 
       }
+
+    }
+
+
+    // Full chronological history — every pick ever set, most recent
+    // first. Public: this is meant for visitors to browse, same as the
+    // Streamer Stock history page.
+    if (url.pathname === "/api/creator-of-the-week/history" && request.method === "GET") {
+
+      const { results } = await env.DB
+        .prepare(
+          "SELECT * FROM creator_of_the_week ORDER BY featured_at DESC, id DESC"
+        )
+        .all();
+
+      return Response.json(results);
+
+    }
+
+
+    // Leaderboard — how many times each name has been featured, most
+    // featured first. Grouped on the exact name text as the admin typed
+    // it each time, so using the same spelling/capitalization for a
+    // repeat creator matters for this to count them correctly.
+    if (url.pathname === "/api/creator-of-the-week/leaderboard" && request.method === "GET") {
+
+      const { results } = await env.DB
+        .prepare(`
+          SELECT
+            creator_name,
+            profile_url,
+            COUNT(*) as times_featured,
+            MAX(featured_at) as last_featured
+          FROM creator_of_the_week
+          GROUP BY creator_name
+          ORDER BY times_featured DESC, last_featured DESC
+        `)
+        .all();
+
+      return Response.json(results);
 
     }
 

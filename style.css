@@ -410,6 +410,17 @@ body {
 .reel-embed-container iframe {
     max-width: 100%;
 }
+.reel-history-link {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: #8B5A2B;
+    text-decoration: none;
+}
+.reel-history-link:hover {
+    text-decoration: underline;
+}
 
 .spotify-box {
     background-color: #ffffff;
