@@ -30,8 +30,11 @@ tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
 
 [triggers]
-# Checks every YouTube streamer's live status every 5 minutes.
-crons = ["*/5 * * * *"]
+# Checks every YouTube streamer's live status every 15 minutes. Bumped up
+# from 5 minutes, alongside batching the videos.list API call, after the
+# YouTube Data API's free daily quota started running out some evenings —
+# see the comment on updateYoutubeLiveStatuses in worker.js for the math.
+crons = ["*/15 * * * *"]
 
 [observability]
 enabled = true

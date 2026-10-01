@@ -2176,7 +2176,7 @@ function renderStreamerWatchBlock(streamer) {
                 <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}"
                     frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
-            <p class="embed-reliability-note">Live status updates roughly every 5 minutes. If this looks wrong, try refreshing the page.</p>
+            <p class="embed-reliability-note">Live status updates roughly every 15 minutes. If this looks wrong, try refreshing the page.</p>
         `;
     }
 

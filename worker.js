@@ -559,96 +559,126 @@ async function isRateLimited(env, ip, action, cooldownSeconds) {
 
 }
 
-// Checks a YouTube channel's most recent uploaded video using the official
-// YouTube Data API v3 instead of scraping the channel page. Uses the
-// "uploads playlist" trick to keep this cheap: a channel's uploads playlist
-// ID is always its channel ID with the leading "UC" swapped for "UU", so we
-// can skip an extra channels.list call entirely. Total cost per check is
-// ~2 quota units (1 for the playlist lookup, 1 for the video's own status) —
-// well within the free 10,000 units/day, versus 100 units for a single
-// search.list call.
-//
-// Originally this only reported live status and threw away everything else
-// about the video it had just looked up. It's now also the source for the
-// "new video" badge on the streamer directory — same two API calls, just
-// keeping the publish date too instead of discarding it, so that badge
-// costs nothing extra in quota.
-async function checkYoutubeStatus(channelId, env) {
-
-  if (!env.YOUTUBE_API_KEY) {
-    console.log("YOUTUBE_API_KEY not set — skipping YouTube check");
-    return null;
+// Splits an array into chunks of at most `size` — used below because
+// videos.list accepts at most 50 comma-separated IDs per call. With 50 or
+// fewer YouTube streamers this is just one chunk (one call); past that it's
+// still far fewer calls than one-per-channel.
+function chunkArray(arr, size) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
   }
+  return chunks;
+}
 
-  if (!channelId.startsWith("UC")) {
-    // Not a standard channel ID — can't derive the uploads playlist ID this way.
-    console.log(`YouTube check skipped for ${channelId}: not a UC... channel ID`);
-    return null;
-  }
+// Finds each channel's most recently uploaded video via the "uploads
+// playlist" trick (a channel's uploads playlist ID is always its channel ID
+// with the leading "UC" swapped for "UU"), so no extra channels.list call
+// is needed to look that playlist ID up. This step costs 1 quota unit PER
+// CHANNEL and can't be batched — YouTube's playlistItems.list only accepts
+// a single playlist ID per request, unlike videos.list below. Returns a
+// Map of channelId -> videoId (or null if the channel has no videos, isn't
+// a standard "UC..." ID, or the call failed).
+async function fetchLatestVideoIds(channelIds, env) {
 
-  const uploadsPlaylistId = "UU" + channelId.slice(2);
+  const result = new Map();
 
-  try {
+  for (const channelId of channelIds) {
 
-    // 1 unit — the most recent video they've published (a livestream shows
-    // up here the moment it starts, same as a regular upload would).
-    const playlistRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId=${encodeURIComponent(uploadsPlaylistId)}&key=${env.YOUTUBE_API_KEY}`
-    );
-
-    const playlistData = await playlistRes.json();
-
-    if (!playlistRes.ok) {
-      console.log(`YouTube playlistItems failed for ${channelId}: status=${playlistRes.status} error=${JSON.stringify(playlistData.error)}`);
-      return null;
+    if (!channelId.startsWith("UC")) {
+      // Not a standard channel ID — can't derive the uploads playlist ID this way.
+      console.log(`YouTube check skipped for ${channelId}: not a UC... channel ID`);
+      result.set(channelId, null);
+      continue;
     }
 
-    const latestVideoId = playlistData.items?.[0]?.snippet?.resourceId?.videoId;
+    const uploadsPlaylistId = "UU" + channelId.slice(2);
 
-    if (!latestVideoId) {
-      return null;
+    try {
+
+      const playlistRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId=${encodeURIComponent(uploadsPlaylistId)}&key=${env.YOUTUBE_API_KEY}`
+      );
+
+      const playlistData = await playlistRes.json();
+
+      if (!playlistRes.ok) {
+        console.log(`YouTube playlistItems failed for ${channelId}: status=${playlistRes.status} error=${JSON.stringify(playlistData.error)}`);
+        result.set(channelId, null);
+        continue;
+      }
+
+      result.set(channelId, playlistData.items?.[0]?.snippet?.resourceId?.videoId || null);
+
+    } catch (err) {
+
+      console.log("YouTube playlistItems failed for", channelId, err.message);
+      result.set(channelId, null);
+
     }
-
-    // 1 unit — read that video's actual broadcast status and publish date
-    // directly from YouTube's own data instead of guessing from page HTML.
-    const videoRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(latestVideoId)}&key=${env.YOUTUBE_API_KEY}`
-    );
-
-    const videoData = await videoRes.json();
-
-    if (!videoRes.ok) {
-      console.log(`YouTube videos.list failed for ${channelId}: status=${videoRes.status} error=${JSON.stringify(videoData.error)}`);
-      return null;
-    }
-
-    const snippet = videoData.items?.[0]?.snippet;
-
-    // liveBroadcastContent is "live", "upcoming", or "none" — straight from
-    // YouTube, not inferred.
-    const liveBroadcastContent = snippet?.liveBroadcastContent;
-
-    console.log(`YouTube check for ${channelId}: videoId=${latestVideoId} liveBroadcastContent=${liveBroadcastContent}`);
-
-    return {
-      liveVideoId: liveBroadcastContent === "live" ? latestVideoId : null,
-      latestVideoId: latestVideoId,
-      publishedAt: snippet?.publishedAt || null
-    };
-
-  } catch (err) {
-
-    console.log("YouTube check failed for", channelId, err.message);
-    return null;
 
   }
+
+  return result;
+
+}
+
+// THE BATCHING: videos.list accepts up to 50 comma-separated video IDs for
+// a flat 1 quota unit total — not 1 unit per ID — so every video gathered
+// above goes through here in as few calls as possible (just one, for up to
+// 50 YouTube streamers) instead of the old one-call-per-channel approach.
+// Returns a Map of videoId -> snippet (liveBroadcastContent, publishedAt).
+async function fetchVideoSnippets(videoIds, env) {
+
+  const result = new Map();
+
+  for (const chunk of chunkArray(videoIds, 50)) {
+
+    try {
+
+      const videoRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${chunk.map(encodeURIComponent).join(",")}&key=${env.YOUTUBE_API_KEY}`
+      );
+
+      const videoData = await videoRes.json();
+
+      if (!videoRes.ok) {
+        console.log(`YouTube videos.list failed for a batch of ${chunk.length}: status=${videoRes.status} error=${JSON.stringify(videoData.error)}`);
+        continue;
+      }
+
+      for (const item of videoData.items || []) {
+        result.set(item.id, item.snippet);
+      }
+
+    } catch (err) {
+
+      console.log(`YouTube videos.list failed for a batch of ${chunk.length}:`, err.message);
+
+    }
+
+  }
+
+  return result;
 
 }
 
 // Loops over every streamer with a YouTube channel ID on file and refreshes
 // their cached live status AND latest-video info in D1. Called on a
 // schedule (see wrangler.toml).
+//
+// Quota cost per run is now ~1 unit per channel (the playlistItems.list
+// lookup) plus 1 more unit per 50 channels (the batched videos.list call) —
+// down from 2 units per channel before. For 20 YouTube streamers that's
+// ~21 units per run instead of ~40, which at a 15-minute interval
+// (96 runs/day) comes to roughly 2,000 units/day, well under the free
+// 10,000/day ceiling with real room to grow the roster further.
 async function updateYoutubeLiveStatuses(env) {
+
+  if (!env.YOUTUBE_API_KEY) {
+    console.log("YOUTUBE_API_KEY not set — skipping YouTube check");
+    return;
+  }
 
   const { results } = await env.DB
     .prepare(
@@ -662,26 +692,54 @@ async function updateYoutubeLiveStatuses(env) {
     )
     .all();
 
+  if (results.length === 0) {
+    return;
+  }
+
+  const latestVideoIdByChannel = await fetchLatestVideoIds(
+    results.map((streamer) => streamer.embed_channel_id),
+    env
+  );
+
+  const videoIdsToCheck = Array.from(new Set(
+    Array.from(latestVideoIdByChannel.values()).filter(Boolean)
+  ));
+
+  const snippetByVideoId = await fetchVideoSnippets(videoIdsToCheck, env);
+
   for (const streamer of results) {
 
-    const status = await checkYoutubeStatus(streamer.embed_channel_id, env);
+    const latestVideoId = latestVideoIdByChannel.get(streamer.embed_channel_id);
 
-    if (!status) {
-      // API call failed or nothing came back — leave whatever's already
-      // stored alone rather than clobbering it with blanks.
+    if (!latestVideoId) {
+      // API call failed, channel has no videos, or an unusable channel ID —
+      // leave whatever's already stored alone rather than clobbering it.
       continue;
     }
 
-    const liveChanged = (status.liveVideoId || null) !== (streamer.youtube_live_video_id || null);
-    const newVideoChanged = (status.latestVideoId || null) !== (streamer.latest_video_id || null);
+    const snippet = snippetByVideoId.get(latestVideoId);
 
-    // Skip the write entirely if nothing changed since last check. This is
-    // the common case (a streamer isn't live most of the time and doesn't
-    // upload every 5 minutes), so this cuts the row-write cost of this cron
-    // job down to roughly "once per streamer per time something actually
-    // changed", instead of once per streamer every single time the cron
-    // runs (every 5 minutes, 288 times a day, forever, regardless of
-    // whether anything changed).
+    if (!snippet) {
+      // Was in the batch request but didn't come back (e.g. that one video
+      // got deleted/privated between the two calls) — same as above, leave
+      // the stored value alone rather than guessing.
+      continue;
+    }
+
+    // liveBroadcastContent is "live", "upcoming", or "none" — straight from
+    // YouTube, not inferred.
+    const liveBroadcastContent = snippet.liveBroadcastContent;
+    const liveVideoId = liveBroadcastContent === "live" ? latestVideoId : null;
+    const publishedAt = snippet.publishedAt || null;
+
+    console.log(`YouTube check for ${streamer.embed_channel_id}: videoId=${latestVideoId} liveBroadcastContent=${liveBroadcastContent}`);
+
+    const liveChanged = (liveVideoId || null) !== (streamer.youtube_live_video_id || null);
+    const newVideoChanged = (latestVideoId || null) !== (streamer.latest_video_id || null);
+
+    // Skip the write entirely if nothing changed since last check — this
+    // only affects D1 write cost, not API quota, but no reason to write
+    // rows that haven't changed either.
     if (!liveChanged && !newVideoChanged) {
       continue;
     }
@@ -701,11 +759,11 @@ async function updateYoutubeLiveStatuses(env) {
         `
       )
       .bind(
-        status.liveVideoId,
+        liveVideoId,
         now,
-        status.liveVideoId, now,
-        status.latestVideoId,
-        status.publishedAt,
+        liveVideoId, now,
+        latestVideoId,
+        publishedAt,
         streamer.id
       )
       .run();
@@ -820,7 +878,7 @@ async function updateKickLiveStatuses(env) {
     const isLive = await checkKickLive(slug, token);
 
     // Same fix as the YouTube check: skip the write entirely when nothing
-    // changed since last time, instead of writing a row every 5 minutes
+    // changed since last time, instead of writing a row every 15 minutes
     // for every Kick streamer regardless of whether their status moved.
     const wasLive = Boolean(streamer.kick_is_live);
 
