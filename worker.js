@@ -1476,9 +1476,20 @@ export default {
       // GET streamers
       if (request.method === "GET") {
 
+        // stock_score is computed fresh every time rather than cached on
+        // the streamers row — it's just a running SUM of stock_history, and
+        // at this site's scale that's cheap enough to compute on read, so
+        // there's no cached total that could ever drift out of sync with
+        // the actual history.
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM streamers ORDER BY id ASC"
+            `
+            SELECT
+              streamers.*,
+              COALESCE((SELECT SUM(points) FROM stock_history WHERE stock_history.streamer_id = streamers.id), 0) AS stock_score
+            FROM streamers
+            ORDER BY streamers.id ASC
+            `
           )
           .all();
 
@@ -1627,40 +1638,6 @@ export default {
               .run();
 
           }
-
-          return Response.json({ success: true });
-
-        }
-
-        // Stock trend is a manual, admin-set signal (not automated) — "up"
-        // or "down" to flag a streamer as more/less entertaining lately,
-        // or null to clear it back to no opinion set. Every change (including
-        // clearing) is also logged to stock_history with a timestamp, so the
-        // full up/down timeline can be graphed later — the streamers.stock_trend
-        // column only ever holds the current value, this table is what makes
-        // history possible.
-        if (data.stockTrend !== undefined) {
-
-          await env.DB
-            .prepare(
-              "UPDATE streamers SET stock_trend = ? WHERE id = ?"
-            )
-            .bind(
-              data.stockTrend,
-              data.id
-            )
-            .run();
-
-          await env.DB
-            .prepare(
-              "INSERT INTO stock_history (streamer_id, trend, changed_at) VALUES (?, ?, ?)"
-            )
-            .bind(
-              data.id,
-              data.stockTrend,
-              Date.now()
-            )
-            .run();
 
           return Response.json({ success: true });
 
@@ -2210,18 +2187,74 @@ export default {
     }
 
     // =====================
-    // STOCK HISTORY API (not used by any page yet — this just exposes the
-    // timeline being logged in PUT /api/streamers above, ready for a future
-    // chart to read from)
+    // STOCK HISTORY API
     // =====================
 
+    // Admin-only: logs one point adjustment for a streamer — either a
+    // routine ±0.02 nudge (the Stock Up/Down buttons) or a one-off custom
+    // amount for something bigger (a very good or very bad stretch, getting
+    // banned from a platform, etc). Nothing is ever overwritten or capped —
+    // this is a running total that just keeps accumulating forever, same
+    // idea as a real stock price. Multiple adjustments logged on the same
+    // day both count (they're separate rows), rather than the later one
+    // replacing the earlier one.
+    if (url.pathname === "/api/streamers/stock" && request.method === "POST") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      const data = await request.json();
+
+      const points = Number(data.points);
+
+      if (!data.id || !Number.isFinite(points) || points === 0) {
+        return Response.json({
+          error: "Need a streamer ID and a non-zero point value."
+        }, {
+          status: 400
+        });
+      }
+
+      const note = data.note ? String(data.note).trim().slice(0, 200) : null;
+
+      await env.DB
+        .prepare(
+          "INSERT INTO stock_history (streamer_id, points, note, changed_at) VALUES (?, ?, ?, ?)"
+        )
+        .bind(
+          data.id,
+          points,
+          note,
+          Date.now()
+        )
+        .run();
+
+      const { results } = await env.DB
+        .prepare(
+          "SELECT SUM(points) as total FROM stock_history WHERE streamer_id = ?"
+        )
+        .bind(data.id)
+        .all();
+
+      return Response.json({
+        success: true,
+        newTotal: results[0]?.total || 0
+      });
+
+    }
+
+    // One streamer's full point-adjustment history, oldest first — not
+    // currently used by any page (both script.js and stock.js use the bulk
+    // endpoint below instead, so neither needs one request per streamer),
+    // kept available for anything that wants a single streamer's timeline
+    // on its own later.
     if (url.pathname.startsWith("/api/streamers/") && url.pathname.endsWith("/stock-history") && request.method === "GET") {
 
       const streamerId = url.pathname.replace("/api/streamers/", "").replace("/stock-history", "");
 
       const { results } = await env.DB
         .prepare(
-          "SELECT trend, changed_at FROM stock_history WHERE streamer_id = ? ORDER BY changed_at ASC"
+          "SELECT points, note, changed_at FROM stock_history WHERE streamer_id = ? ORDER BY changed_at ASC"
         )
         .bind(streamerId)
         .all();
@@ -2230,30 +2263,30 @@ export default {
 
     }
 
-    // Bulk version of the above — every streamer, joined with whatever
-    // stock_history rows they have from the last 30 days, in a single query.
-    // Used by both the homepage "top movers" widget and the full stock.html
-    // page, so neither has to make one request per streamer. A streamer
-    // with no rows in the window still comes back (as a single row with
-    // trend/changed_at both null, courtesy of the LEFT JOIN) so the frontend
-    // can show "no recent movement" instead of just omitting them.
+    // Bulk version — every streamer, joined with their ENTIRE point history
+    // (no date filter; this is lifetime data, not a rolling window), in a
+    // single query. Used by both the homepage "top movers" widget (which
+    // only displays the last 30 days of this, cut client-side) and the full
+    // stock.html page (which lets the visitor pick 30d/3mo/6mo/1yr/all,
+    // also client-side) — neither needs its own endpoint, since at this
+    // site's scale the whole history for every streamer is still tiny to
+    // send in one response. A streamer with no history at all still comes
+    // back (as a single row with points/changed_at both null, courtesy of
+    // the LEFT JOIN) so the frontend can show "no movement yet" instead of
+    // just omitting them.
     if (url.pathname === "/api/stock-history" && request.method === "GET") {
-
-      const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
 
       const { results } = await env.DB
         .prepare(
           `
           SELECT streamers.id AS streamer_id, streamers.name, streamers.ticker,
-            stock_history.trend, stock_history.changed_at
+            stock_history.points, stock_history.changed_at
           FROM streamers
           LEFT JOIN stock_history
             ON stock_history.streamer_id = streamers.id
-            AND stock_history.changed_at >= ?
           ORDER BY streamers.id ASC, stock_history.changed_at ASC
           `
         )
-        .bind(cutoff)
         .all();
 
       return Response.json(results);

@@ -54,6 +54,15 @@ function escapeForDisplay(str) {
     return div.innerHTML;
 }
 
+// Same formatting as stock-charts.js's copy — duplicated rather than
+// loaded in here, since admin.html doesn't need the rest of that file's
+// charting logic, just this one small helper.
+function formatStockValue(value) {
+    const rounded = Math.round(value * 100) / 100;
+    const sign = rounded > 0 ? "+" : "";
+    return `${sign}${rounded.toFixed(2)}`;
+}
+
 let streamers = [];
 
 let editingStreamerId = null;
@@ -270,41 +279,89 @@ unsetFeaturedButton.addEventListener("click", async function() {
 
 const stockUpButton = document.getElementById("stockUpButton");
 const stockDownButton = document.getElementById("stockDownButton");
-const stockClearButton = document.getElementById("stockClearButton");
+const stockCustomAmount = document.getElementById("stockCustomAmount");
+const stockCustomNote = document.getElementById("stockCustomNote");
+const stockCustomButton = document.getElementById("stockCustomButton");
+const currentStockScore = document.getElementById("currentStockScore");
 
 
-async function setStockTrend(trend) {
+// Shows the currently-selected streamer's running stock total — called
+// whenever the dropdown selection changes, and again after every
+// adjustment so the number updates immediately without waiting for a full
+// streamer-list reload.
+function updateCurrentStockScoreDisplay() {
 
     const id = streamerSelect.value;
 
-    await fetch("/api/streamers", {
-        method: "PUT",
+    const streamer = streamers.find((s) => String(s.id) === String(id));
+
+    if (!streamer) {
+        currentStockScore.textContent = "Select a streamer above to see their current stock.";
+        return;
+    }
+
+    const score = Number(streamer.stock_score) || 0;
+
+    currentStockScore.textContent = `${streamer.name}'s current stock: ${formatStockValue(score)}`;
+
+}
+
+streamerSelect.addEventListener("change", updateCurrentStockScoreDisplay);
+
+
+async function applyStockAdjustment(points, note) {
+
+    const id = streamerSelect.value;
+
+    const response = await fetch("/api/streamers/stock", {
+        method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
             id: id,
-            stockTrend: trend
+            points: points,
+            note: note || null
         })
     });
 
+    const result = await response.json();
+
+    if (!response.ok) {
+        alert(result.error || "Couldn't apply that stock adjustment.");
+        return;
+    }
+
     await loadStreamers();
+    updateCurrentStockScoreDisplay();
 
 }
 
 
 stockUpButton.addEventListener("click", function() {
-    setStockTrend("up");
+    applyStockAdjustment(0.02, null);
 });
 
 
 stockDownButton.addEventListener("click", function() {
-    setStockTrend("down");
+    applyStockAdjustment(-0.02, null);
 });
 
 
-stockClearButton.addEventListener("click", function() {
-    setStockTrend(null);
+stockCustomButton.addEventListener("click", function() {
+
+    const amount = Number(stockCustomAmount.value);
+
+    if (!Number.isFinite(amount) || amount === 0) {
+        alert("Enter a non-zero number, e.g. -2 or 1.5.");
+        return;
+    }
+
+    applyStockAdjustment(amount, stockCustomNote.value);
+
+    stockCustomAmount.value = "";
+    stockCustomNote.value = "";
+
 });
 
 
@@ -324,8 +381,7 @@ function displayStreamers() {
             <p>Status: ${streamer.status}</p>
             ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
             ${Number(streamer.featured_pinned) === 1 ? `<p>📌 Pinned as homepage featured streamer</p>` : ""}
-            ${streamer.stock_trend === "up" ? `<p>📈 Stock: up</p>` : ""}
-            ${streamer.stock_trend === "down" ? `<p>📉 Stock: down</p>` : ""}
+            <p>${Number(streamer.stock_score) > 0 ? "📈" : (Number(streamer.stock_score) < 0 ? "📉" : "➖")} Stock: ${formatStockValue(Number(streamer.stock_score) || 0)}</p>
         `;
 
         const actionsRow = document.createElement("div");
@@ -872,6 +928,8 @@ function loadStreamerDropdown() {
     });
 
     articleStreamer.value = previousValue;
+
+    updateCurrentStockScoreDisplay();
 
 }
 

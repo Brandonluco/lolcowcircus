@@ -1481,7 +1481,7 @@ async function loadStockGraph() {
         width: 320,
         height: 260,
         padding: 34,
-        limit: 7
+        limit: 6
     });
 
 }
@@ -2096,10 +2096,16 @@ async function renderStreamerDirectory(container) {
 
         let stockBadgeHtml = "";
 
-        if (streamer.stock_trend === "up") {
-            stockBadgeHtml = `<span class="stock-badge stock-badge-up">📈 ▲</span>`;
-        } else if (streamer.stock_trend === "down") {
-            stockBadgeHtml = `<span class="stock-badge stock-badge-down">📉 ▼</span>`;
+        // stock_score is a lifetime running total now (see worker.js's
+        // /api/streamers), not a binary up/down flag — the badge just
+        // reflects which side of zero it's currently on, same visual
+        // meaning as before, but the number itself is shown too.
+        const stockScore = Number(streamer.stock_score) || 0;
+
+        if (stockScore > 0) {
+            stockBadgeHtml = `<span class="stock-badge stock-badge-up">📈 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
+        } else if (stockScore < 0) {
+            stockBadgeHtml = `<span class="stock-badge stock-badge-down">📉 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
         }
 
         card.innerHTML = `

@@ -82,6 +82,52 @@ body {
     display: block;
 }
 
+.stock-chart-tile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+}
+
+.stock-range-picker {
+    display: flex;
+    gap: 4px;
+}
+
+.stock-range-button {
+    background: #f2f2f2;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: #666;
+    cursor: pointer;
+}
+
+.stock-range-button:hover {
+    background: #e8e8e8;
+}
+
+.stock-range-button-active {
+    background: #222;
+    border-color: #222;
+    color: white;
+}
+
+.stock-chart-tile-value {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.stock-chart-tile-value-up {
+    color: #1e7e34;
+}
+
+.stock-chart-tile-value-down {
+    color: #a32d2d;
+}
+
 .stock-loading {
     color: #999;
 }

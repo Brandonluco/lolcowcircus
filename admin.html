@@ -44,11 +44,21 @@
 
     <br><br>
 
-    <label>Streamer Stock (your call on how they're doing lately):</label>
+    <label>Streamer Stock — a running total, like a real stock price. Routine good/bad days nudge it ±0.02; it never resets and has no ceiling or floor, so a run of good days gradually pulls it up even if a bad day or two happens in between.</label>
     <br>
-    <button type="button" id="stockUpButton">📈 Stock Up</button>
-    <button type="button" id="stockDownButton">📉 Stock Down</button>
-    <button type="button" id="stockClearButton">Clear Stock</button>
+
+    <div id="currentStockScore" class="admin-note">Select a streamer above to see their current stock.</div>
+
+    <button type="button" id="stockUpButton">📈 Good Day (+0.02)</button>
+    <button type="button" id="stockDownButton">📉 Bad Day (−0.02)</button>
+
+    <br><br>
+
+    <label>Custom adjustment (very good/bad stretch, got banned from a platform, etc. — any non-zero number, positive or negative):</label>
+    <br>
+    <input type="text" id="stockCustomAmount" placeholder="e.g. -2 or 1.5" aria-label="Custom stock point amount">
+    <input type="text" id="stockCustomNote" placeholder="Note (optional) — e.g. &quot;banned from Twitch&quot;" aria-label="Note for this adjustment">
+    <button type="button" id="stockCustomButton">Apply Custom Adjustment</button>
 
 </section>
 
