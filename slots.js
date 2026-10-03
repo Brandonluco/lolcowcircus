@@ -18,6 +18,8 @@
 // the whole D1 write allowance (which would take comments/articles down).
 // =====================================================================
 
+import { handleSlotAdminRoutes } from "./slots-admin.js";
+
 const DEFAULTS = {
   jackpot_points: 0.5,
   jackpot_odds: 1000,
@@ -840,12 +842,25 @@ async function handleLeaderboard(env) {
 // Returns a Response, or null if the route isn't one of ours.
 // ---------------------------------------------------------------------
 
+// Called by the admin routes after any change, so edits show up on this
+// server's next request instead of after the 60-second cache. (Other
+// servers pick the change up within a minute — that's expected.)
+function resetCaches() {
+  configCache = { at: 0, data: null };
+  globalCache = { at: 0, day: "", total: 0 };
+  leaderboardCache = { at: 0, rows: [] };
+}
+
 export async function handleSlotRoutes(request, env, url, helpers) {
 
   const path = url.pathname;
   const method = request.method;
 
   try {
+
+    if (path.startsWith("/api/slots/admin/")) {
+      return await handleSlotAdminRoutes(request, env, url, helpers, { resetCaches });
+    }
 
     if (path === "/api/slots/config" && method === "GET") {
       return await handleConfig(request, env);

@@ -2125,6 +2125,12 @@ export default {
 
       headers.set("etag", object.httpEtag);
 
+      // Slot symbol images get a brand-new key every time one is replaced,
+      // so a given URL's content never changes — safe to cache for a year.
+      if (key.startsWith("slots/")) {
+        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      }
+
       return new Response(object.body, { headers });
 
     }
