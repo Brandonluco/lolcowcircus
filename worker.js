@@ -1,3 +1,5 @@
+import { handleSlotRoutes } from "./slots.js";
+
 // Hard ceiling on how many chat connections this single shared room will
 // ever hold at once, regardless of who they're from. This is the backstop
 // against a flood taking the whole room down for every visitor.
@@ -941,6 +943,13 @@ export default {
   async fetch(request, env) {
 
     const url = new URL(request.url);
+
+    // CowTube Slots — everything under /api/slots/ lives in slots.js.
+    // Placed first so nothing below can accidentally intercept it.
+    if (url.pathname.startsWith("/api/slots/")) {
+      const slotResponse = await handleSlotRoutes(request, env, url, { requireAdmin });
+      if (slotResponse) return slotResponse;
+    }
 
     if (url.pathname === "/api/chat") {
 
