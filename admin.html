@@ -258,6 +258,56 @@
 
 </div> <!-- closes admin-layout -->
 
+<section class="admin-comments admin-slots" id="slotsAdmin">
+
+    <h2>🎰 Slot Machine</h2>
+
+    <p class="admin-note">
+        The slot machine on the homepage sidebar. Streamers appear on the
+        reels once they have an image and are switched on. The machine hides
+        itself automatically until enough streamers are ready. Every spin
+        is decided on the server — nothing here or in the visitor's browser
+        can fake a win.
+    </p>
+
+    <div id="slotsMessage" class="slots-message hidden"></div>
+
+    <div id="slotsStatus" class="slots-status">Loading...</div>
+
+    <div id="slotsTool" class="slots-tool hidden"></div>
+
+    <h3>Streamer Faces</h3>
+
+    <p class="admin-note">
+        Upload a PNG with a transparent background (any size — it's trimmed,
+        centered and shrunk to 256×256 for you, with a preview before
+        anything is saved). "Opt out" keeps a streamer off the reels and
+        out of every prize pick, even if they have an image.
+    </p>
+
+    <div id="slotsFaces"></div>
+
+    <h3>Special Prizes</h3>
+
+    <p class="admin-note">
+        Three of the same prize symbol wins it. "Winner picks" prizes let the
+        player choose which streamer gets the points; "Random" prizes (like
+        the rotten tooth) are given to a random streamer by the server.
+        Negative points take stock away.
+    </p>
+
+    <div id="slotsPrizes"></div>
+
+    <h3>Machine Settings</h3>
+
+    <div id="slotsSettings"></div>
+
+    <h3>Activity</h3>
+
+    <div id="slotsActivity"></div>
+
+</section>
+
 <section class="admin-comments">
 
     <h2>Article Comments</h2>
@@ -292,6 +342,7 @@
 
 <script src="data.js"></script>
 <script src="admin.js"></script>
+<script src="admin-slots.js"></script>
 
 </body>
 </html>

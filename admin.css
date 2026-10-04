@@ -214,3 +214,314 @@ button {
     color: #666;
     margin-top: 0;
 }
+
+
+/* ==========================
+   SLOT MACHINE ADMIN
+   ========================== */
+
+.admin-slots h3 {
+    margin: 30px 0 10px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    color: #222;
+}
+
+.admin-slots h4 {
+    margin: 0 0 8px;
+}
+
+.slots-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.slots-message-success { background: #e8f5e9; color: #1e7e34; }
+.slots-message-error   { background: #fdecea; color: #a32d2d; }
+.slots-message-info    { background: #eef3fb; color: #2b4a7a; }
+
+.slots-status {
+    background: #f8f8f8;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 15px 0;
+}
+
+.slots-status-line {
+    margin: 4px 0;
+    line-height: 1.5;
+}
+
+.slots-warn {
+    color: #a32d2d;
+}
+
+.slots-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-right: 6px;
+}
+
+.slots-pill-live { background: #e8f5e9; color: #1e7e34; }
+.slots-pill-off  { background: #f3f3f3; color: #777; }
+
+.slots-tool {
+    background: #fffaf0;
+    border: 2px dashed #d4a017;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 15px 0;
+}
+
+.slots-tool h3 {
+    margin: 0 0 12px;
+    padding: 0;
+    border: none;
+}
+
+.slots-mode label {
+    display: block;
+    margin: 4px 0;
+}
+
+.slots-preview-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+}
+
+/* Mimics how the symbol will look in a reel window on the dark cabinet. */
+.slots-preview-reel {
+    background: radial-gradient(circle at 50% 35%, #2a1a1a, #0d0707);
+    border: 3px solid #d4a017;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.slots-preview-big   { width: 128px; height: 128px; }
+.slots-preview-small { width: 64px;  height: 64px; border-width: 2px; border-radius: 8px; }
+
+.slots-preview-reel img,
+.slots-preview-checker img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.slots-preview-checker {
+    width: 128px;
+    height: 128px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 8px 8px;
+}
+
+.slots-tool-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.slots-error {
+    color: #a32d2d;
+    font-weight: 600;
+}
+
+.slots-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.slots-filter {
+    background: #f2f2f2;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.slots-filter-active {
+    background: #222;
+    border-color: #222;
+    color: #fff;
+}
+
+.slots-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #f8f8f8;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+
+.slots-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.slots-row-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.slots-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.slots-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: contain;
+    background: radial-gradient(circle at 50% 35%, #2a1a1a, #0d0707);
+    border: 2px solid #d4a017;
+    flex-shrink: 0;
+}
+
+.slots-thumb-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-weight: 700;
+    background: #eee;
+    border: 2px dashed #bbb;
+}
+
+.slots-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.slots-badge-on    { background: #e8f5e9; color: #1e7e34; }
+.slots-badge-needs { background: #fff4e0; color: #b36b00; }
+.slots-badge-out   { background: #fdecea; color: #a32d2d; }
+.slots-badge-off   { background: #eee;    color: #777; }
+
+.slots-prize-row,
+.slots-new-prize {
+    align-items: flex-start;
+}
+
+.slots-fields {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    min-width: 0;
+}
+
+.slots-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.slots-fields label.slots-check {
+    flex-direction: row;
+    align-self: end;
+}
+
+.slots-fields input[type="text"],
+.slots-fields input[type="number"],
+.slots-fields select,
+.slots-setting input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px;
+    font-size: 1rem;
+}
+
+.slots-new-prize {
+    background: #fffaf0;
+    border-style: dashed;
+    margin-top: 14px;
+}
+
+.slots-setting {
+    display: grid;
+    grid-template-columns: 280px 140px 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.slots-setting-label {
+    font-weight: 600;
+}
+
+.slots-setting .admin-note {
+    margin: 0;
+}
+
+.slots-invalid {
+    outline: 2px solid #e74c3c;
+}
+
+.slots-activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.slots-list {
+    margin: 0;
+    padding-left: 18px;
+    line-height: 1.7;
+}
+
+.slots-list button {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+
+    .slots-row,
+    .slots-prize-row {
+        flex-wrap: wrap;
+    }
+
+    .slots-setting {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .slots-activity-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
