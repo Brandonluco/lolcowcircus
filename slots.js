@@ -42,10 +42,10 @@ const CAP_EPSILON = 0.000001;
 // Small helpers
 // ---------------------------------------------------------------------
 
-function json(body, status = 200) {
+function json(body, status = 200, extraHeaders) {
   return Response.json(body, {
     status: status,
-    headers: { "Cache-Control": "no-store" }
+    headers: { "Cache-Control": "no-store", ...(extraHeaders || {}) }
   });
 }
 
@@ -100,6 +100,105 @@ async function hashIp(env, ip) {
 
 function imagePath(key) {
   return key ? `/api/images/${encodeURIComponent(key)}` : null;
+}
+
+// ---------------------------------------------------------------------
+// Human-check pass (Cloudflare Turnstile)
+//
+// Turnstile is checked ONCE per visit, not once per spin. When a visitor
+// passes, the server hands back a signed cookie good for an hour. It is
+// tied to the visitor's hashed IP, so copying it to another connection is
+// useless, and it can't be forged without SLOT_HASH_SALT.
+//
+// If TURNSTILE_SECRET isn't set, no pass is required (so the machine
+// still works before the key is added).
+// ---------------------------------------------------------------------
+
+const PASS_COOKIE = "slot_pass";
+const PASS_TTL_SECONDS = 60 * 60;
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+async function hmacHex(env, text) {
+
+  const enc = new TextEncoder();
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(env.SLOT_HASH_SALT),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(text));
+
+  return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
+
+}
+
+function timingSafeEqual(a, b) {
+
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  let diff = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+
+  return diff === 0;
+
+}
+
+function readCookie(request, name) {
+
+  const header = request.headers.get("Cookie") || "";
+
+  for (const part of header.split(";")) {
+    const [k, ...rest] = part.trim().split("=");
+    if (k === name) {
+      return rest.join("=");
+    }
+  }
+
+  return null;
+
+}
+
+async function hasValidPass(request, env, ipHash) {
+
+  if (!env.TURNSTILE_SECRET) {
+    return true;
+  }
+
+  const raw = readCookie(request, PASS_COOKIE);
+
+  if (!raw) {
+    return false;
+  }
+
+  const [expText, sig] = raw.split(".");
+  const exp = Number(expText);
+
+  if (!Number.isInteger(exp) || !sig || exp <= Math.floor(Date.now() / 1000)) {
+    return false;
+  }
+
+  const expected = await hmacHex(env, `${ipHash}:${exp}`);
+
+  return timingSafeEqual(expected, sig);
+
+}
+
+async function makePassCookie(env, ipHash) {
+
+  const exp = Math.floor(Date.now() / 1000) + PASS_TTL_SECONDS;
+  const sig = await hmacHex(env, `${ipHash}:${exp}`);
+
+  return `${PASS_COOKIE}=${exp}.${sig}; Max-Age=${PASS_TTL_SECONDS}; Path=/api/slots; HttpOnly; Secure; SameSite=Lax`;
+
 }
 
 // ---------------------------------------------------------------------
@@ -370,6 +469,7 @@ async function handleConfig(request, env) {
   const { day } = todayUtc();
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await hashIp(env, ip);
+  const hasPass = await hasValidPass(request, env, ipHash);
 
   const [spinRes, playerRes] = await env.DB.batch([
     env.DB.prepare("SELECT spins FROM slot_spins WHERE ip_hash = ? AND day = ?").bind(ipHash, day),
@@ -392,6 +492,8 @@ async function handleConfig(request, env) {
       target: p.target
     })),
     jackpotPoints: cfg.settings.jackpot_points,
+    passRequired: !!env.TURNSTILE_SECRET,
+    hasPass: hasPass,
     dailyLimit: dailyLimit,
     spinsLeft: Math.max(0, dailyLimit - used),
     playerName: playerRes.results[0]?.display_name || null
@@ -410,6 +512,12 @@ async function handleSpin(request, env) {
   }
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const ipHash = await hashIp(env, ip);
+
+  // Cheapest check first: no human-check pass, no database work at all.
+  if (!(await hasValidPass(request, env, ipHash))) {
+    return json({ error: "verify_required" }, 403);
+  }
 
   if (await isBanned(env, ip)) {
     return json({ error: "banned" }, 403);
@@ -432,8 +540,6 @@ async function handleSpin(request, env) {
   if (globalTotal >= settings.global_daily_spin_limit) {
     return json({ error: "machine_resting" }, 503);
   }
-
-  const ipHash = await hashIp(env, ip);
 
   // Atomic spin counter. If this visitor is already at their limit the
   // UPDATE's WHERE clause fails and no row comes back.
@@ -588,6 +694,65 @@ async function handleSpin(request, env) {
 
   // ----- Nothing --------------------------------------------------------
   return json({ ok: true, outcome: "none", reels: noWinReels(cfg), spinsLeft: spinsLeft });
+
+}
+
+// ---------------------------------------------------------------------
+// POST /api/slots/verify   { token }   (Turnstile token from the browser)
+// ---------------------------------------------------------------------
+
+async function handleVerify(request, env) {
+
+  if (!env.SLOT_HASH_SALT) {
+    return json({ error: "not_configured" }, 500);
+  }
+
+  if (!env.TURNSTILE_SECRET) {
+    return json({ ok: true, passRequired: false });
+  }
+
+  let data;
+  try {
+    data = await request.json();
+  } catch {
+    return json({ error: "bad_request" }, 400);
+  }
+
+  const token = typeof data?.token === "string" ? data.token : "";
+
+  // Turnstile tokens are at most 2,048 characters.
+  if (token.length < 10 || token.length > 2048) {
+    return json({ error: "bad_request" }, 400);
+  }
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+
+  const form = new URLSearchParams();
+  form.set("secret", env.TURNSTILE_SECRET);
+  form.set("response", token);
+
+  if (ip !== "unknown") {
+    form.set("remoteip", ip);
+  }
+
+  let outcome;
+
+  try {
+    const res = await fetch(TURNSTILE_VERIFY_URL, { method: "POST", body: form });
+    outcome = await res.json();
+  } catch (err) {
+    console.log("Turnstile verify failed:", err && err.message);
+    return json({ error: "verify_unavailable" }, 502);
+  }
+
+  if (!outcome || outcome.success !== true) {
+    return json({ error: "verification_failed" }, 403);
+  }
+
+  const ipHash = await hashIp(env, ip);
+  const cookie = await makePassCookie(env, ipHash);
+
+  return json({ ok: true }, 200, { "Set-Cookie": cookie });
 
 }
 
@@ -868,6 +1033,10 @@ export async function handleSlotRoutes(request, env, url, helpers) {
 
     if (path === "/api/slots/spin" && method === "POST") {
       return await handleSpin(request, env);
+    }
+
+    if (path === "/api/slots/verify" && method === "POST") {
+      return await handleVerify(request, env);
     }
 
     if (path === "/api/slots/claim" && method === "POST") {

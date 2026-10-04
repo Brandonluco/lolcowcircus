@@ -7,6 +7,7 @@
     <!-- Includes the metadata profile you liked from the example -->
     <link rel="profile" href="http://gmpg.org">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="slot-machine.css">
     <link rel="icon" type="image/png" href="/Images/Favicon/faviconnew.png">
 </head>
 <body>
@@ -152,6 +153,42 @@
 </div>
 
     </div>
+
+    <!-- CowTube Slots. Starts hidden and only appears once the server says
+         it's ready (enough streamers have images), so visitors never see a
+         half-built machine. All behavior lives in slot-machine.js; every
+         outcome is decided by the server, never in the browser. -->
+    <section class="slot-box hidden" id="slotBox" aria-label="CowTube Slots">
+
+        <div class="slot-marquee">
+            <img class="slot-logo" src="Images/Slots/cowtube-slots-logo-640.webp" width="640" height="212" alt="CowTube Slots">
+            <div class="slot-lights" id="slotLights" aria-hidden="true"></div>
+        </div>
+
+        <div class="slot-window">
+            <div class="slot-reels">
+                <div class="slot-reel" role="img" aria-label="Reel 1"><div class="slot-strip"></div></div>
+                <div class="slot-reel" role="img" aria-label="Reel 2"><div class="slot-strip"></div></div>
+                <div class="slot-reel" role="img" aria-label="Reel 3"><div class="slot-strip"></div></div>
+            </div>
+        </div>
+
+        <div class="slot-readout" id="slotReadout" role="status" aria-live="polite"></div>
+
+        <div class="slot-turnstile hidden" id="slotTurnstile"></div>
+
+        <div class="slot-controls">
+            <button type="button" class="slot-spin" id="slotSpin">SPIN</button>
+            <div class="slot-counter" id="slotCounter"></div>
+        </div>
+
+        <div class="slot-footer">
+            <button type="button" class="slot-link" id="slotPrizesBtn">Prizes</button>
+            <button type="button" class="slot-link" id="slotBoardBtn">Leaderboard</button>
+            <a class="slot-link" href="stock.html">Stock market</a>
+        </div>
+
+    </section>
 
     <div class="featured-videos-box">
 
@@ -300,6 +337,7 @@
 <script src="data.js"></script>
 <script src="stock-charts.js"></script>
 <script src="script.js"></script>
+<script src="slot-machine.js"></script>
 
 </body>
 </html>
