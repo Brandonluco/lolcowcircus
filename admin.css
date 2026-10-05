@@ -525,3 +525,96 @@ button {
     }
 
 }
+
+
+/* ==========================
+   CURRENT STREAMERS (collapsible, compact rows)
+   ========================== */
+
+.streamer-details > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    user-select: none;
+}
+
+.streamer-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Matches the look of the other sections' <h2> headings. */
+.streamer-summary-title {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.streamer-details > summary::before {
+    content: "▸";
+    font-size: 1.2em;
+    color: #666;
+    transition: transform 0.15s ease;
+}
+
+.streamer-details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.streamer-details > summary:focus-visible {
+    outline: 2px solid #8B5A2B;
+    outline-offset: 4px;
+}
+
+.admin-left input.streamer-search {
+    margin: 14px 0 10px;
+    font-size: 14px;
+    padding: 8px 10px;
+}
+
+.streamer-row {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) 62px 62px auto auto;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+.streamer-row:last-child {
+    border-bottom: none;
+}
+
+.streamer-row.hidden {
+    display: none;
+}
+
+.streamer-row:hover {
+    background: #f8f8f8;
+}
+
+.streamer-row-name,
+.streamer-row-platform {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.streamer-row-platform {
+    color: #666;
+}
+
+.streamer-row-stock {
+    white-space: nowrap;
+    color: #888;
+    font-variant-numeric: tabular-nums;
+}
+
+.streamer-stock-up   { color: #1e7e34; }
+.streamer-stock-down { color: #a32d2d; }
+
+.streamer-row button {
+    padding: 3px 8px;
+    font-size: 12px;
+}

@@ -9,6 +9,8 @@ const streamerEditingStatus = document.getElementById("streamerEditingStatus");
 const streamerStatus = document.getElementById("streamerStatus");
 const addStreamer = document.getElementById("addStreamer");
 const streamerList = document.getElementById("streamerList");
+const streamerSearchInput = document.getElementById("streamerSearch");
+const streamerCountLabel = document.getElementById("streamerCount");
 const streamerSelect = document.getElementById("streamerSelect");
 const alertMessage = document.getElementById("alertMessage");
 const alertType = document.getElementById("alertType");
@@ -365,37 +367,82 @@ stockCustomButton.addEventListener("click", function() {
 });
 
 
+// Compact one-line rows inside a collapsible section (closed by default),
+// with a search box. Edit and Delete behave exactly as before — only the
+// layout changed. Names/tooltips are set through the DOM (textContent /
+// .title) rather than HTML strings, so nothing a streamer is called can
+// break out of the markup.
 function displayStreamers() {
-
-    
 
     streamerList.replaceChildren();
 
-    streamers.forEach((streamer, index) => {
+    streamers.forEach((streamer) => {
 
-        const div = document.createElement("div");
+        const stock = Number(streamer.stock_score) || 0;
 
-        div.innerHTML = `
-            <strong>${escapeForDisplay(streamer.name)}</strong>${streamer.ticker ? ` <span class="admin-note">(${escapeForDisplay(streamer.ticker)})</span>` : ""}
-            <p>Platform: ${escapeForDisplay(streamer.platform || "(none set)")}</p>
-            <p>Status: ${streamer.status}</p>
-            ${Number(streamer.instagram_is_live) === 1 ? `<p>🟠 Marked live on Instagram (manually set — clears itself after 6 hours)</p>` : ""}
-            ${Number(streamer.featured_pinned) === 1 ? `<p>📌 Pinned as homepage featured streamer</p>` : ""}
-            <p>${Number(streamer.stock_score) > 0 ? "📈" : (Number(streamer.stock_score) < 0 ? "📉" : "➖")} Stock: ${formatStockValue(Number(streamer.stock_score) || 0)}</p>
-        `;
+        const row = document.createElement("div");
+        row.className = "streamer-row";
+        row.dataset.search = [streamer.name, streamer.ticker, streamer.platform]
+            .filter(Boolean).join(" ").toLowerCase();
 
-        const actionsRow = document.createElement("div");
+        const status = document.createElement("span");
+        status.className = "streamer-row-status";
+        status.textContent = streamer.status === "online" ? "🟢" : (streamer.status === "away" ? "🟡" : "⚫");
+        status.title = `Status: ${streamer.status}`;
 
-        actionsRow.innerHTML = `
-            <button class="edit-streamer">Edit</button>
-            <button class="delete-streamer">Delete</button>
-        `;
+        const nameCell = document.createElement("span");
+        nameCell.className = "streamer-row-name";
 
-        actionsRow.querySelector(".edit-streamer").addEventListener("click", function() {
+        const nameText = document.createElement("strong");
+        nameText.textContent = streamer.name;
+        nameCell.appendChild(nameText);
+
+        if (streamer.ticker) {
+            const ticker = document.createElement("span");
+            ticker.className = "admin-note";
+            ticker.textContent = ` (${streamer.ticker})`;
+            nameCell.appendChild(ticker);
+        }
+
+        if (Number(streamer.instagram_is_live) === 1) {
+            const live = document.createElement("span");
+            live.textContent = " 🟠";
+            live.title = "Marked live on Instagram (manually set — clears itself after 6 hours)";
+            nameCell.appendChild(live);
+        }
+
+        if (Number(streamer.featured_pinned) === 1) {
+            const pin = document.createElement("span");
+            pin.textContent = " 📌";
+            pin.title = "Pinned as homepage featured streamer";
+            nameCell.appendChild(pin);
+        }
+
+        nameCell.title = streamer.name;
+
+        const platform = document.createElement("span");
+        platform.className = "streamer-row-platform";
+        platform.textContent = streamer.platform || "—";
+        platform.title = `Platform: ${streamer.platform || "(none set)"}`;
+
+        const stockCell = document.createElement("span");
+        stockCell.className = "streamer-row-stock" + (stock > 0 ? " streamer-stock-up" : (stock < 0 ? " streamer-stock-down" : ""));
+        stockCell.textContent = `${stock > 0 ? "📈" : (stock < 0 ? "📉" : "➖")} ${formatStockValue(stock)}`;
+        stockCell.title = "Stock";
+
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "edit-streamer";
+        editButton.textContent = "Edit";
+        editButton.addEventListener("click", function() {
             editStreamer(streamer.id);
         });
 
-        actionsRow.querySelector(".delete-streamer").addEventListener("click", async function() {
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete-streamer";
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener("click", async function() {
 
             const confirmDelete = confirm(`Delete ${streamer.name}? This can't be undone.`);
 
@@ -413,13 +460,56 @@ function displayStreamers() {
 
         });
 
-        div.appendChild(actionsRow);
+        row.append(status, nameCell, platform, stockCell, editButton, deleteButton);
 
-        streamerList.appendChild(div);
+        streamerList.appendChild(row);
 
     });
 
+    applyStreamerSearch();
+
 }
+
+// Filters the rows above by name, ticker or platform as you type, and keeps
+// the "(32)" count in the section heading honest.
+function applyStreamerSearch() {
+
+    const term = (streamerSearchInput.value || "").trim().toLowerCase();
+
+    let shown = 0;
+
+    streamerList.querySelectorAll(".streamer-row").forEach((row) => {
+
+        const match = !term || row.dataset.search.includes(term);
+
+        row.classList.toggle("hidden", !match);
+
+        if (match) {
+            shown++;
+        }
+
+    });
+
+    streamerCountLabel.textContent = term
+        ? `(${shown} of ${streamers.length})`
+        : `(${streamers.length})`;
+
+    const existing = streamerList.querySelector(".streamer-empty");
+
+    if (existing) {
+        existing.remove();
+    }
+
+    if (streamers.length > 0 && shown === 0) {
+        const none = document.createElement("p");
+        none.className = "admin-note streamer-empty";
+        none.textContent = "No streamers match that search.";
+        streamerList.appendChild(none);
+    }
+
+}
+
+streamerSearchInput.addEventListener("input", applyStreamerSearch);
 
 function editStreamer(id) {
 

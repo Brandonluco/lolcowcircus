@@ -200,9 +200,19 @@
 </section>
 
 <section>
-    <h2>Current Streamers</h2>
+    <details class="streamer-details" id="streamerDetails">
 
-    <div id="streamerList"></div>
+        <summary>
+            <span class="streamer-summary-title">Current Streamers</span>
+            <span id="streamerCount" class="admin-note"></span>
+        </summary>
+
+        <input type="text" id="streamerSearch" class="streamer-search"
+            placeholder="Search by name, ticker or platform…" aria-label="Search streamers">
+
+        <div id="streamerList"></div>
+
+    </details>
 
 </section>
 
