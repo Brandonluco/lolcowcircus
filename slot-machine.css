@@ -508,3 +508,28 @@
     }
 
 }
+
+/* ---------- Sound buttons (music / effects) ---------- */
+
+.slot-sound-btn {
+    position: relative;
+    padding: 5px 10px;
+    line-height: 1.2;
+    font-size: 0.9rem;
+}
+
+/* A red slash across the icon when that sound is switched off. */
+.slot-sound-off {
+    opacity: 0.6;
+}
+
+.slot-sound-off::after {
+    content: "";
+    position: absolute;
+    left: 22%;
+    right: 22%;
+    top: 50%;
+    border-top: 2px solid #ff6b6b;
+    transform: rotate(-38deg);
+    pointer-events: none;
+}

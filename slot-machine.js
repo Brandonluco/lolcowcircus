@@ -27,13 +27,17 @@
 
     // Public key from Cloudflare's Turnstile page. Safe to be visible.
     // Paste yours between the quotes:
-    const TURNSTILE_SITE_KEY = "0x4AAAAAAFNW2-hCaFk1m6c1";
+    const TURNSTILE_SITE_KEY = "PASTE_YOUR_TURNSTILE_SITE_KEY_HERE";
 
+    // The spin sound is ~3.7 seconds long, so the reels stop at about
+    // 1.9s, 2.65s and 3.4s to land with it. Change spinMs / reelStaggerMs
+    // to make spins shorter or longer.
     const timing = Object.assign({
-        spinMs: 1100,         // first reel's spin time
-        reelStaggerMs: 450,   // each later reel keeps spinning this much longer
-        stripLength: 14,      // how many symbols blur past during a spin
-        revealPauseMs: 250    // beat between the reels stopping and the result text
+        spinMs: 1900,         // first reel's spin time
+        reelStaggerMs: 750,   // each later reel keeps spinning this much longer
+        stripLength: 22,      // how many symbols blur past during a spin
+        revealPauseMs: 250,   // beat between the reels stopping and the result text
+        idleMusicMs: 180000   // music fades out after this long without a spin
     }, window.CowTubeSlotsTiming || {});
 
     const els = {
@@ -44,7 +48,9 @@
         turnstile: document.getElementById("slotTurnstile"),
         lights: document.getElementById("slotLights"),
         prizesBtn: document.getElementById("slotPrizesBtn"),
-        boardBtn: document.getElementById("slotBoardBtn")
+        boardBtn: document.getElementById("slotBoardBtn"),
+        musicBtn: document.getElementById("slotMusicBtn"),
+        fxBtn: document.getElementById("slotFxBtn")
     };
 
     const state = {
@@ -772,6 +778,386 @@
     }
 
     // -----------------------------------------------------------------
+    // Sound
+    //
+    //   * MUSIC   — the song. Starts on the first spin of a visit (browsers
+    //               only allow sound after a click), loops, and is the only
+    //               thing the music button mutes.
+    //   * EFFECTS — the reel-spin sound and the button click. Own button.
+    //               The very press that starts the music has no click, so the
+    //               two never collide.
+    //
+    // Everything goes through Web Audio gain nodes so the volumes below are
+    // honored on iPhones too (they ignore a plain <audio> volume). Nothing
+    // is downloaded until it's needed, and any audio problem is swallowed —
+    // a missing file or blocked sound can never stop the machine working.
+    // -----------------------------------------------------------------
+
+    const AUDIO = {
+        musicUrl: "Audio/one-armed-bandit.mp3",
+        spinUrl: "Audio/slot-spin.mp3",
+        clickUrl: "Audio/slot-button-click.mp3",
+        musicVolume: 0.30,          // the song leads...
+        spinVolume: 0.35,           // ...the spin sound sits underneath it
+        clickVolume: 0.50,
+        fxBoostWhenMusicOff: 1.6,   // effects get a bit louder when the song is muted
+        musicFadeInSec: 1.5,
+        musicFadeOutSec: 0.5
+    };
+
+    function readPref(key) {
+        try { return localStorage.getItem(key) === "1"; } catch (err) { return false; }
+    }
+
+    function writePref(key, on) {
+        try { localStorage.setItem(key, on ? "1" : "0"); } catch (err) { /* private mode */ }
+    }
+
+    const sound = {
+        ctx: null,
+        musicGain: null,
+        fxGain: null,
+        musicEl: null,
+        buffers: {},
+        loading: {},
+        musicMuted: readPref("slotMusicMuted"),
+        fxMuted: readPref("slotFxMuted"),
+        musicWanted: false,
+        pausedByTab: false,
+        idleTimer: null,
+        spinNode: null
+    };
+
+    function ensureContext() {
+
+        if (sound.ctx) {
+            return sound.ctx;
+        }
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioCtx) {
+            return null;
+        }
+
+        try {
+            const ctx = new AudioCtx();
+            sound.ctx = ctx;
+            sound.musicGain = ctx.createGain();
+            sound.musicGain.gain.value = 0;
+            sound.fxGain = ctx.createGain();
+            sound.musicGain.connect(ctx.destination);
+            sound.fxGain.connect(ctx.destination);
+            applyFxLevel();
+            return ctx;
+        } catch (err) {
+            return null;
+        }
+
+    }
+
+    function resumeContext(ctx) {
+
+        if (ctx.state === "suspended") {
+            try {
+                const result = ctx.resume();
+                if (result && result.catch) result.catch(() => {});
+            } catch (err) { /* ignore */ }
+        }
+
+    }
+
+    function applyFxLevel() {
+
+        if (sound.fxGain) {
+            sound.fxGain.gain.value = sound.musicMuted ? AUDIO.fxBoostWhenMusicOff : 1;
+        }
+
+    }
+
+    // Fetches and decodes a short sound once, then keeps it.
+    function loadBuffer(name, url) {
+
+        if (sound.buffers[name]) {
+            return Promise.resolve(sound.buffers[name]);
+        }
+
+        if (!sound.loading[name]) {
+
+            sound.loading[name] = fetch(url)
+                .then((response) => {
+                    if (!response.ok) throw new Error("http " + response.status);
+                    return response.arrayBuffer();
+                })
+                .then((data) => new Promise((resolve, reject) => {
+                    const maybe = sound.ctx.decodeAudioData(data, resolve, reject);
+                    if (maybe && maybe.then) maybe.then(resolve, reject);
+                }))
+                .then((buffer) => {
+                    sound.buffers[name] = buffer;
+                    return buffer;
+                })
+                .catch(() => {
+                    sound.loading[name] = null;   // allow a retry on a later spin
+                    return null;
+                });
+
+        }
+
+        return sound.loading[name];
+
+    }
+
+    function playBuffer(name, volume) {
+
+        const buffer = sound.buffers[name];
+
+        if (!buffer || !sound.ctx || sound.fxMuted) {
+            return null;
+        }
+
+        try {
+            const source = sound.ctx.createBufferSource();
+            const gain = sound.ctx.createGain();
+            source.buffer = buffer;
+            gain.gain.value = volume;
+            source.connect(gain);
+            gain.connect(sound.fxGain);
+            source.start();
+            return { source: source, gain: gain };
+        } catch (err) {
+            return null;
+        }
+
+    }
+
+    function stopSpinSound() {
+
+        if (sound.spinNode) {
+            try { sound.spinNode.source.stop(); } catch (err) { /* already ended */ }
+            sound.spinNode = null;
+        }
+
+    }
+
+    function rampMusic(target, seconds) {
+
+        if (!sound.ctx || !sound.musicGain) {
+            return;
+        }
+
+        const gain = sound.musicGain.gain;
+        const now = sound.ctx.currentTime;
+
+        gain.cancelScheduledValues(now);
+        gain.setValueAtTime(gain.value, now);
+        gain.linearRampToValueAtTime(target, now + seconds);
+
+    }
+
+    function armIdleTimer() {
+
+        clearTimeout(sound.idleTimer);
+
+        sound.idleTimer = setTimeout(() => {
+            if (sound.musicWanted) {
+                stopMusic();
+            }
+        }, timing.idleMusicMs);
+
+    }
+
+    function startMusic() {
+
+        if (sound.musicMuted || !sound.ctx) {
+            return;
+        }
+
+        try {
+
+            if (!sound.musicEl) {
+
+                const element = new Audio(AUDIO.musicUrl);
+                element.loop = true;
+                element.preload = "auto";
+
+                try {
+                    sound.ctx.createMediaElementSource(element).connect(sound.musicGain);
+                } catch (err) {
+                    // Couldn't route through Web Audio: fall back to the plain element volume.
+                    element.volume = AUDIO.musicVolume;
+                    sound.musicGain.gain.value = 1;
+                }
+
+                sound.musicEl = element;
+
+            }
+
+            const played = sound.musicEl.play();
+            if (played && played.catch) played.catch(() => {});
+
+            rampMusic(AUDIO.musicVolume, AUDIO.musicFadeInSec);
+
+            sound.musicWanted = true;
+            sound.pausedByTab = false;
+            armIdleTimer();
+
+        } catch (err) {
+            // sound is optional
+        }
+
+    }
+
+    function stopMusic() {
+
+        sound.musicWanted = false;
+        clearTimeout(sound.idleTimer);
+
+        if (!sound.musicEl) {
+            return;
+        }
+
+        rampMusic(0, AUDIO.musicFadeOutSec);
+
+        setTimeout(() => {
+            if (!sound.musicWanted && sound.musicEl) {
+                try { sound.musicEl.pause(); } catch (err) { /* ignore */ }
+            }
+        }, AUDIO.musicFadeOutSec * 1000 + 60);
+
+    }
+
+    // Called at the very top of spin(), inside the click, so the browser
+    // lets sound start.
+    function onPress() {
+
+        const ctx = ensureContext();
+
+        if (!ctx) {
+            return;
+        }
+
+        resumeContext(ctx);
+
+        let musicStartedNow = false;
+
+        if (!sound.musicMuted) {
+            if (!sound.musicWanted) {
+                startMusic();
+                musicStartedNow = true;
+            } else {
+                armIdleTimer();
+            }
+        }
+
+        if (sound.fxMuted) {
+            return;
+        }
+
+        // Fetch both effects now (small files) so they're ready when needed.
+        loadBuffer("spin", AUDIO.spinUrl);
+        loadBuffer("click", AUDIO.clickUrl);
+
+        // The press that starts the song stays click-free.
+        if (!musicStartedNow) {
+            playBuffer("click", AUDIO.clickVolume);
+        }
+
+    }
+
+    // Called when the server's answer arrives, just as the reels start.
+    async function playSpinSound() {
+
+        if (sound.fxMuted || !sound.ctx || prefersReducedMotion()) {
+            return;
+        }
+
+        const buffer = await Promise.race([
+            loadBuffer("spin", AUDIO.spinUrl),
+            new Promise((resolve) => setTimeout(() => resolve(null), 500))
+        ]);
+
+        if (!buffer || sound.fxMuted) {
+            return;
+        }
+
+        stopSpinSound();
+        sound.spinNode = playBuffer("spin", AUDIO.spinVolume);
+
+    }
+
+    function syncSoundButtons() {
+
+        const set = (button, muted, label) => {
+            button.classList.toggle("slot-sound-off", muted);
+            button.setAttribute("aria-pressed", String(!muted));
+            button.setAttribute("aria-label", `${label}: ${muted ? "off" : "on"}`);
+            button.title = `${label} — click to turn ${muted ? "on" : "off"}`;
+        };
+
+        set(els.musicBtn, sound.musicMuted, "Music");
+        set(els.fxBtn, sound.fxMuted, "Sound effects");
+
+    }
+
+    function setMusicMuted(muted) {
+
+        sound.musicMuted = muted;
+        writePref("slotMusicMuted", muted);
+        syncSoundButtons();
+        applyFxLevel();
+
+        if (muted) {
+            stopMusic();
+            return;
+        }
+
+        // Unmuting is itself a click, so sound is allowed. If they've already
+        // spun this visit, bring the song straight back in.
+        const ctx = ensureContext();
+
+        if (ctx && sound.hasSpun) {
+            resumeContext(ctx);
+            startMusic();
+        }
+
+    }
+
+    function setFxMuted(muted) {
+
+        sound.fxMuted = muted;
+        writePref("slotFxMuted", muted);
+        syncSoundButtons();
+
+        if (muted) {
+            stopSpinSound();
+        }
+
+    }
+
+    // Don't keep playing into a background tab.
+    document.addEventListener("visibilitychange", () => {
+
+        if (!sound.musicEl) {
+            return;
+        }
+
+        if (document.hidden) {
+            if (sound.musicWanted && !sound.musicEl.paused) {
+                try { sound.musicEl.pause(); } catch (err) { /* ignore */ }
+                sound.pausedByTab = true;
+            }
+        } else if (sound.pausedByTab && sound.musicWanted) {
+            sound.pausedByTab = false;
+            try {
+                const played = sound.musicEl.play();
+                if (played && played.catch) played.catch(() => {});
+            } catch (err) { /* ignore */ }
+        }
+
+    });
+
+    // -----------------------------------------------------------------
     // The spin itself
     // -----------------------------------------------------------------
 
@@ -808,6 +1194,13 @@
         if (state.busy || state.spinsLeft <= 0 || state.overlay) {
             return;
         }
+
+        // Must run right here, synchronously inside the click, or browsers
+        // won't let the sound start. Wrapped so audio can never block a spin.
+        try {
+            sound.hasSpun = true;
+            onPress();
+        } catch (err) { /* sound is optional */ }
 
         setBusy(true);
         setMessage("");
@@ -852,6 +1245,8 @@
 
         state.spinsLeft = result.spinsLeft;
 
+        try { playSpinSound(); } catch (err) { /* sound is optional */ }
+
         await animateReels(result.reels);
         await new Promise((resolve) => setTimeout(resolve, timing.revealPauseMs));
 
@@ -894,6 +1289,11 @@
 
     els.prizesBtn.addEventListener("click", () => { if (state.config) showPrizes(); });
     els.boardBtn.addEventListener("click", showLeaderboard);
+
+    els.musicBtn.addEventListener("click", () => setMusicMuted(!sound.musicMuted));
+    els.fxBtn.addEventListener("click", () => setFxMuted(!sound.fxMuted));
+
+    syncSoundButtons();
 
     // Warm up the human check as soon as the visitor shows interest, so
     // their first spin doesn't wait on a script download.
@@ -938,7 +1338,12 @@
 
         randomResting().forEach((key, i) => showStatic(i, key));
 
-        setMessage("Press SPIN to play!");
+        if (state.spinsLeft <= 0) {
+            setMessage("You're out of spins for today. Come back tomorrow!", "error");
+        } else {
+            setMessage("Press SPIN to play!");
+        }
+
         updateCounter();
 
         box.classList.remove("hidden");
