@@ -27,7 +27,7 @@
 
     // Public key from Cloudflare's Turnstile page. Safe to be visible.
     // Paste yours between the quotes:
-    const TURNSTILE_SITE_KEY = "PASTE_YOUR_TURNSTILE_SITE_KEY_HERE";
+    const TURNSTILE_SITE_KEY = "0x4AAAAAAFNW2-hCaFk1m6c1";
 
     // The spin sound is ~3.7 seconds long, so the reels stop at about
     // 1.9s, 2.65s and 3.4s to land with it. Change spinMs / reelStaggerMs
