@@ -69,20 +69,13 @@ body {
     height: 100%;
     overflow: visible;
     pointer-events: none;
+    opacity: 0;
 }
 
 .screen-outline polygon {
-    fill: rgba(255, 255, 255, 0.13);
-    stroke: none;
-    mix-blend-mode: screen;
-    opacity: 0;
-    transition: opacity 0.18s ease;
+    display: none;
 }
 
-.screen-button:hover .screen-outline polygon,
-.screen-button:focus-visible .screen-outline polygon {
-    opacity: 1;
-}
 
 .screen-home {
     top: 28%;
