@@ -1477,6 +1477,66 @@ export default {
 
 
     // =====================
+    // ADMIN: INSTAGRAM LIVE TOGGLE
+    // =====================
+    // Same write the Instagram Live buttons used to make through
+    // PUT /api/streamers, split onto its own path so that ONE narrow
+    // path can be added to the Cloudflare Access application (for the
+    // beanoh-admin service token) without putting the public roster
+    // GET on /api/streamers behind a login. Deliberately only does this
+    // one thing — it can't edit, pin, delete or re-status a streamer —
+    // so whatever reaches this path can do no more than flip the badge.
+    // The old PUT /api/streamers branch is left in place untouched.
+    if (url.pathname === "/api/admin/streamers/live-status") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method !== "PUT") {
+        return Response.json({ error: "method_not_allowed" }, {
+          status: 405,
+          headers: { Allow: "PUT" }
+        });
+      }
+
+      let data;
+      try {
+        data = await request.json();
+      } catch {
+        return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+      }
+
+      if (!data || !data.id || typeof data.instagramLive !== "boolean") {
+        return Response.json({
+          error: "Need a streamer id and instagramLive set to true or false."
+        }, {
+          status: 400
+        });
+      }
+
+      // Same stamp the old route writes, so the cron's 6-hour auto-expiry
+      // (expireStaleInstagramLive) behaves identically.
+      await env.DB
+        .prepare(
+          `
+          UPDATE streamers
+          SET instagram_is_live = ?,
+              instagram_live_set_at = ?
+          WHERE id = ?
+          `
+        )
+        .bind(
+          data.instagramLive ? 1 : 0,
+          data.instagramLive ? new Date().toISOString() : null,
+          data.id
+        )
+        .run();
+
+      return Response.json({ success: true });
+
+    }
+
+    // =====================
     // STREAMERS API
     // =====================
 

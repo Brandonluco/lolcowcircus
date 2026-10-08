@@ -199,7 +199,7 @@ instagramLiveOnButton.addEventListener("click", async function() {
 
     const id = streamerSelect.value;
 
-    await fetch("/api/streamers", {
+    await fetch("/api/admin/streamers/live-status", {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"
@@ -219,7 +219,7 @@ instagramLiveOffButton.addEventListener("click", async function() {
 
     const id = streamerSelect.value;
 
-    await fetch("/api/streamers", {
+    await fetch("/api/admin/streamers/live-status", {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"
