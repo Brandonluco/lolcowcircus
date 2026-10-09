@@ -663,7 +663,7 @@ async function loadFeaturedVideos() {
 
 async function deleteFeaturedVideo(id) {
 
-    await fetch(`/api/featured-videos/${id}`, {
+    await fetch(`/api/admin/featured-videos?id=${encodeURIComponent(id)}`, {
         method: "DELETE"
     });
 
@@ -677,7 +677,7 @@ addFeaturedVideo.addEventListener("click", async function() {
         return;
     }
 
-    await fetch("/api/featured-videos", {
+    await fetch("/api/admin/featured-videos", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -848,7 +848,7 @@ updateAlert.addEventListener("click", async function() {
     };
 
 
-    await fetch("/api/alert", {
+    await fetch("/api/admin/alert", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -866,7 +866,7 @@ updateAlert.addEventListener("click", async function() {
 
 clearAlert.addEventListener("click", async function() {
 
-    await fetch("/api/alert", {
+    await fetch("/api/admin/alert", {
         method: "DELETE"
     });
 
@@ -914,7 +914,7 @@ updateCreatorOfWeek.addEventListener("click", async function() {
 
     try {
 
-        const response = await fetch("/api/creator-of-the-week", {
+        const response = await fetch("/api/admin/creator-of-the-week", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -949,7 +949,7 @@ updateCreatorOfWeek.addEventListener("click", async function() {
 
 clearCreatorOfWeek.addEventListener("click", async function() {
 
-    await fetch("/api/creator-of-the-week", {
+    await fetch("/api/admin/creator-of-the-week", {
         method: "DELETE"
     });
 

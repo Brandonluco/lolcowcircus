@@ -1072,6 +1072,81 @@ export default {
     }
     
     // =====================
+    // ADMIN WRITE PATHS (alert / featured videos / cow of the week)
+    // =====================
+    // Why these exist: the public site reads /api/alert,
+    // /api/featured-videos and /api/creator-of-the-week with plain
+    // unauthenticated GETs, so those three paths can't sit inside the
+    // Cloudflare Access app (Access 302s every unauthenticated request to
+    // its login page, and the public sections render empty). The
+    // beanoh-admin service token needs to WRITE to them, though, so the
+    // writes get their own /api/admin/... paths — those are the only ones
+    // that go in the Access app, and the public GETs stay out of it.
+    //
+    // How it works: rather than copy the existing handlers (the cow of the
+    // week POST alone is ~70 lines of validation), an /api/admin/ request
+    // is authenticated here first, restricted to POST/DELETE (so these
+    // paths can never serve a read), then pointed at the existing handler
+    // by rewriting url.pathname. The handler that runs is the exact same
+    // code as before — same validation, same history-preserving behavior,
+    // same requireAdmin check — so the two paths can't drift apart.
+    // The original /api/... write routes are left in place and unchanged.
+    //
+    // DELETE of a single featured video takes its id as ?id=5 (or as a
+    // trailing /5). The query-string form means the Access app only needs
+    // the exact path /api/admin/featured-videos, no wildcard.
+    const ADMIN_WRITE_ALIASES = new Map([
+      ["/api/admin/alert", "/api/alert"],
+      ["/api/admin/creator-of-the-week", "/api/creator-of-the-week"],
+      ["/api/admin/featured-videos", "/api/featured-videos"]
+    ]);
+
+    const isAdminFeaturedVideoById = url.pathname.startsWith("/api/admin/featured-videos/");
+
+    if (ADMIN_WRITE_ALIASES.has(url.pathname) || isAdminFeaturedVideoById) {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method !== "POST" && request.method !== "DELETE") {
+        return Response.json({ error: "method_not_allowed" }, {
+          status: 405,
+          headers: { Allow: "POST, DELETE" }
+        });
+      }
+
+      if (isAdminFeaturedVideoById || (url.pathname === "/api/admin/featured-videos" && request.method === "DELETE")) {
+
+        if (request.method !== "DELETE") {
+          return Response.json({ error: "method_not_allowed" }, {
+            status: 405,
+            headers: { Allow: "DELETE" }
+          });
+        }
+
+        const videoId = isAdminFeaturedVideoById
+          ? url.pathname.slice("/api/admin/featured-videos/".length)
+          : (url.searchParams.get("id") || "");
+
+        if (!/^\d+$/.test(videoId)) {
+          return Response.json({
+            error: "Need a numeric featured video id (…/featured-videos?id=5)."
+          }, {
+            status: 400
+          });
+        }
+
+        url.pathname = "/api/featured-videos/" + videoId;
+
+      } else {
+
+        url.pathname = ADMIN_WRITE_ALIASES.get(url.pathname);
+
+      }
+
+    }
+
+    // =====================
     // ALERT API
     // =====================
 
