@@ -763,7 +763,8 @@ div.classList.add("admin-article-card");
 
 async function loadArticles() {
 
-    const response = await fetch("/api/articles");
+    // ?fresh=1 skips the public edge cache so the admin always sees its own edits.
+    const response = await fetch("/api/articles?fresh=1");
 
     loadedArticles = await response.json();
 
@@ -1057,7 +1058,8 @@ function loadStreamerDropdown() {
 
 async function loadStreamers() {
 
-    const response = await fetch("/api/streamers");
+    // ?fresh=1 skips the public edge cache so the admin always sees its own edits.
+    const response = await fetch("/api/streamers?fresh=1");
 
     streamers = await response.json();
 

@@ -962,6 +962,12 @@ async function expireStaleInstagramLive(env) {
 
 }
 
+const CACHEABLE_GET_SECONDS = new Map([
+  ["/api/streamers", 60],
+  ["/api/stock-history", 300],
+  ["/api/articles", 60]
+]);
+
 export default {
 
   // Runs on the cron schedule defined in wrangler.toml.
@@ -971,7 +977,53 @@ export default {
     ctx.waitUntil(expireStaleInstagramLive(env));
   },
 
-  async fetch(request, env) {
+  // Public read-only endpoints that every homepage visit hits and that
+  // change slowly. Their answers are kept in Cloudflare's edge cache for a
+  // short time, so a burst of visitors (or bots) costs ONE D1 query per
+  // window instead of one per request. D1's free tier counts every row a
+  // query scans, and these queries scan whole tables (stock_history,
+  // articles + their comment counts), so this is where the rows were going.
+  // Values are seconds. Admin pages append ?fresh=1 to skip the cache.
+  // (Edge caching only works on your custom domain, not *.workers.dev.)
+  async fetch(request, env, ctx) {
+
+    const url = new URL(request.url);
+
+    const ttl = CACHEABLE_GET_SECONDS.get(url.pathname);
+
+    if (request.method !== "GET" || !ttl || url.searchParams.has("fresh")) {
+      return this.handleRequest(request, env);
+    }
+
+    const cache = caches.default;
+    const cacheKey = new Request(url.origin + url.pathname, { method: "GET" });
+
+    const hit = await cache.match(cacheKey);
+
+    if (hit) {
+      // Browsers shouldn't hold their own copy on top of this one.
+      const fromCache = new Response(hit.body, hit);
+      fromCache.headers.set("Cache-Control", "no-cache");
+      return fromCache;
+    }
+
+    const response = await this.handleRequest(request, env);
+
+    if (!response.ok) {
+      return response;
+    }
+
+    const toStore = new Response(response.body, response);
+    toStore.headers.set("Cache-Control", `public, max-age=${ttl}`);
+
+    ctx.waitUntil(cache.put(cacheKey, toStore.clone()));
+
+    toStore.headers.set("Cache-Control", "no-cache");
+    return toStore;
+
+  },
+
+  async handleRequest(request, env) {
 
     const url = new URL(request.url);
 
@@ -1023,7 +1075,10 @@ export default {
 
         const { results } = await env.DB
           .prepare(
-            "SELECT * FROM comments ORDER BY id ASC"
+            // Only the most recent 200 — this used to return the ENTIRE chat
+            // history on every page load, so it got more expensive forever
+            // until someone hit Clear Chat.
+            "SELECT * FROM (SELECT * FROM comments ORDER BY id DESC LIMIT 200) ORDER BY id ASC"
           )
           .all();
 

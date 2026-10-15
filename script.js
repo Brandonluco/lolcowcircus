@@ -446,13 +446,32 @@ function moveStatusBanner() {
 moveStatusBanner();
 
 
+// The status banner, the featured-streamer box and the streamer directory all
+// need the same /api/streamers list. This fetches it once per page load and
+// hands every caller the same result, instead of each one making its own
+// request (each of which costs a D1 query that sums the stock history).
+let streamersPromise = null;
+
+function fetchStreamersOnce() {
+
+    if (!streamersPromise) {
+        streamersPromise = fetch("/api/streamers")
+            .then((response) => response.json())
+            .catch((err) => {
+                streamersPromise = null;
+                throw err;
+            });
+    }
+
+    return streamersPromise;
+
+}
+
 async function loadStatusBanner() {
 
     statusTrack.innerHTML = "";
 
-    const response = await fetch("/api/streamers");
-
-    const updatedStreamers = await response.json();
+    const updatedStreamers = await fetchStreamersOnce();
 
     for (let i = 0; i < 3; i++) {
 
@@ -1463,7 +1482,7 @@ document.addEventListener("keydown", (event) => {
 
 });
 
-async function loadStockGraph() {
+async function loadStockGraph(fresh) {
 
     const container = document.getElementById("stock-graph-mini");
 
@@ -1471,7 +1490,7 @@ async function loadStockGraph() {
         return;
     }
 
-    const response = await fetch("/api/stock-history");
+    const response = await fetch(fresh ? "/api/stock-history?fresh=1" : "/api/stock-history");
 
     const rows = await response.json();
 
@@ -1654,8 +1673,7 @@ async function loadFeaturedStreamer() {
 
     try {
 
-        const response = await fetch("/api/streamers");
-        const streamers = await response.json();
+        const streamers = await fetchStreamersOnce();
 
         const eligible = streamers.filter(isEmbeddableLive);
 
@@ -2016,8 +2034,7 @@ function formatTimeAgo(isoString) {
 
 async function renderStreamerDirectory(container) {
 
-    const response = await fetch("/api/streamers");
-    const streamers = await response.json();
+    const streamers = await fetchStreamersOnce();
 
     container.innerHTML = "";
 

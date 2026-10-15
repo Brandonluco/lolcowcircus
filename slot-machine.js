@@ -142,7 +142,7 @@
     function refreshStockWidget() {
         try {
             if (typeof loadStockGraph === "function") {
-                loadStockGraph();
+                loadStockGraph(true);
             }
         } catch (err) {
             // never let a chart refresh break the machine
