@@ -235,6 +235,38 @@ instagramLiveOffButton.addEventListener("click", async function() {
 });
 
 
+const clearAutoLiveButton = document.getElementById("clearAutoLiveButton");
+
+
+clearAutoLiveButton.addEventListener("click", async function() {
+
+    const id = streamerSelect.value;
+
+    if (!id) {
+        return;
+    }
+
+    const response = await fetch("/api/admin/streamers/live-status", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: id,
+            clearAutoLive: true
+        })
+    });
+
+    if (!response.ok) {
+        alert("Couldn't clear the live badge. (Have you added the two new database columns yet?)");
+        return;
+    }
+
+    await loadStreamers();
+
+});
+
+
 const setFeaturedButton = document.getElementById("setFeaturedButton");
 const unsetFeaturedButton = document.getElementById("unsetFeaturedButton");
 

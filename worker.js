@@ -685,7 +685,7 @@ async function updateYoutubeLiveStatuses(env) {
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, embed_channel_id, youtube_live_video_id, latest_video_id
+      SELECT id, embed_channel_id, youtube_live_video_id, latest_video_id, youtube_live_dismissed_video_id
       FROM streamers
       WHERE platform LIKE '%youtube%'
       AND embed_channel_id IS NOT NULL
@@ -731,7 +731,16 @@ async function updateYoutubeLiveStatuses(env) {
     // liveBroadcastContent is "live", "upcoming", or "none" — straight from
     // YouTube, not inferred.
     const liveBroadcastContent = snippet.liveBroadcastContent;
-    const liveVideoId = liveBroadcastContent === "live" ? latestVideoId : null;
+    let liveVideoId = liveBroadcastContent === "live" ? latestVideoId : null;
+
+    // The admin's "Clear Live Badge" button records which video it dismissed.
+    // YouTube can keep reporting an abruptly-ended stream as "live" for hours,
+    // so while the latest video is still that exact dismissed one, treat it as
+    // not live. A new stream is a new video ID, so it's never suppressed.
+    if (liveVideoId && liveVideoId === streamer.youtube_live_dismissed_video_id) {
+      liveVideoId = null;
+    }
+
     const publishedAt = snippet.publishedAt || null;
 
     console.log(`YouTube check for ${streamer.embed_channel_id}: videoId=${latestVideoId} liveBroadcastContent=${liveBroadcastContent}`);
@@ -850,7 +859,7 @@ async function updateKickLiveStatuses(env) {
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, channel, kick_channel, kick_is_live FROM streamers
+      SELECT id, channel, kick_channel, kick_is_live, kick_live_dismissed FROM streamers
       WHERE platform LIKE '%kick%'
       `
     )
@@ -877,14 +886,29 @@ async function updateKickLiveStatuses(env) {
       continue;
     }
 
-    const isLive = await checkKickLive(slug, token);
+    const apiLive = await checkKickLive(slug, token);
+
+    // The admin's "Clear Live Badge" button sets kick_live_dismissed. While
+    // Kick's API still says live, keep the badge off; once Kick reports
+    // offline, drop the dismissal so the streamer's next stream shows normally.
+    const dismissed = Number(streamer.kick_live_dismissed) === 1;
+    let isLive = apiLive;
+    let clearDismissal = false;
+
+    if (dismissed) {
+      if (apiLive) {
+        isLive = false;
+      } else {
+        clearDismissal = true;
+      }
+    }
 
     // Same fix as the YouTube check: skip the write entirely when nothing
     // changed since last time, instead of writing a row every 15 minutes
     // for every Kick streamer regardless of whether their status moved.
     const wasLive = Boolean(streamer.kick_is_live);
 
-    if (isLive === wasLive) {
+    if (isLive === wasLive && !clearDismissal) {
       continue;
     }
 
@@ -896,11 +920,18 @@ async function updateKickLiveStatuses(env) {
         UPDATE streamers
         SET kick_is_live = ?,
             kick_checked_at = ?,
-            last_live_at = CASE WHEN ? THEN ? ELSE last_live_at END
+            last_live_at = CASE WHEN ? THEN ? ELSE last_live_at END,
+            kick_live_dismissed = ?
         WHERE id = ?
         `
       )
-      .bind(isLive ? 1 : 0, now, isLive ? 1 : 0, now, streamer.id)
+      .bind(
+        isLive ? 1 : 0,
+        now,
+        isLive ? 1 : 0, now,
+        clearDismissal ? 0 : (dismissed ? 1 : 0),
+        streamer.id
+      )
       .run();
 
   }
@@ -1579,6 +1610,37 @@ export default {
         data = await request.json();
       } catch {
         return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+      }
+
+      // Clears the automatic (YouTube/Kick) LIVE badge when a stream ended
+      // abruptly and the badge is stuck. Lives on this same path so no
+      // change is needed to the Cloudflare Access application. The cron
+      // honors the dismissal (see updateYoutubeLiveStatuses and
+      // updateKickLiveStatuses) so the next check doesn't just turn it back on.
+      if (data && data.id && data.clearAutoLive === true) {
+
+        await env.DB
+          .prepare(
+            `
+            UPDATE streamers
+            SET youtube_live_dismissed_video_id = CASE
+                  WHEN youtube_live_video_id IS NOT NULL THEN youtube_live_video_id
+                  ELSE youtube_live_dismissed_video_id
+                END,
+                youtube_live_video_id = NULL,
+                kick_live_dismissed = CASE
+                  WHEN kick_is_live = 1 THEN 1
+                  ELSE kick_live_dismissed
+                END,
+                kick_is_live = 0
+            WHERE id = ?
+            `
+          )
+          .bind(data.id)
+          .run();
+
+        return Response.json({ success: true });
+
       }
 
       if (!data || !data.id || typeof data.instagramLive !== "boolean") {
