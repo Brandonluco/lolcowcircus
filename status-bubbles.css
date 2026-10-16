@@ -13,12 +13,12 @@
    ========================================================================== */
 
 .status-bubbles {
-    --sb-h: clamp(220px, calc(100vh - 360px), 560px);
+    --sb-h: clamp(220px, calc(100vh - 324px), 720px);
     --sb-push: 210px;               /* sits below the quick-nav bubbles */
 
     display: none;
     position: sticky;
-    top: 300px;
+    top: 284px;
     z-index: 900;
     height: var(--sb-h);
     margin-top: var(--sb-push);
@@ -50,10 +50,65 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    height: 100%;
+    flex: 0 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* "Earlier updates" — round glass button with a down arrow, right under
+   the last bubble. Links to updates.html (the past 3 days). */
+.status-bubbles-more {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 10px;
+    text-decoration: none;
+    color: #3a3a3f;
+    pointer-events: auto;
+    outline: none;
+}
+
+.status-bubbles-more-circle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--sb-icon, 34px);
+    height: var(--sb-icon, 34px);
+    border-radius: 50%;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.70) 0%, rgba(255, 255, 255, 0.22) 55%, rgba(255, 255, 255, 0.40) 100%),
+        rgba(232, 224, 240, 0.30);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow:
+        0 8px 22px rgba(70, 50, 100, 0.16),
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(120, 100, 150, 0.14);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.status-bubbles-more-label {
+    display: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(60, 60, 67, 0.75);
+}
+
+.status-bubbles-more:hover .status-bubbles-more-circle,
+.status-bubbles-more:focus-visible .status-bubbles-more-circle {
+    transform: translateY(2px) scale(1.06);
+}
+
+.status-bubbles-more:focus-visible .status-bubbles-more-circle {
+    box-shadow: 0 0 0 3px rgba(52, 120, 246, 0.45), 0 8px 22px rgba(70, 50, 100, 0.16);
 }
 
 /* ----- glass surface (shared by round icons, full bubbles, popovers) ----- */
@@ -153,7 +208,8 @@
 @media (min-width: 1500px) {
 
     .status-bubbles {
-        display: block;
+        display: flex;
+        flex-direction: column;
         --sb-icon: 36px;
         width: var(--sb-icon);
         margin-left: 6px;
@@ -169,10 +225,6 @@
         border-radius: 50%;
         flex: 0 0 auto;
         cursor: pointer;
-    }
-
-    .status-bubble:nth-last-child(n+8) {
-        display: none;               /* icons: only the 7 newest */
     }
 
     .status-bubble-icon {
@@ -272,10 +324,8 @@
 
     .status-bubbles-list {
         overflow: hidden;
-        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
-        padding: 6px 36px 12px;
-        margin: 0 -36px;
+        padding: 6px 36px 38px;     /* room for the shadows so they aren't cut off */
+        margin: 0 -36px -28px;
     }
 
     .status-bubble {
@@ -288,10 +338,6 @@
         padding: 11px 15px 11px 11px;
         border-radius: 22px;
         cursor: default;
-    }
-
-    .status-bubble:nth-last-child(n+8) {
-        display: flex;               /* full bubbles: as many as fit (JS clips the rest) */
     }
 
     .status-bubble.is-clipped {
@@ -338,6 +384,16 @@
 
     .status-bubble-body::before {
         display: none;
+    }
+
+    .status-bubbles-more {
+        --sb-icon: 34px;
+        align-self: center;
+        margin-top: 0;
+    }
+
+    .status-bubbles-more-label {
+        display: inline;
     }
 
     /* The icon layout's hover/focus/tap rules also reach this size; without

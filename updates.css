@@ -1,0 +1,189 @@
+/* ======================================
+   CowTube Updates (history of the news bubbles)
+   ====================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #fcfcfc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #222;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* same faint pastel glow as the bubbles on the main page */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(40% 35% at 15% 10%, rgba(176, 150, 255, 0.20), transparent 70%),
+        radial-gradient(40% 35% at 90% 45%, rgba(255, 164, 196, 0.16), transparent 70%),
+        radial-gradient(45% 35% at 25% 95%, rgba(140, 200, 255, 0.18), transparent 70%);
+}
+
+.updates-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 25px 80px;
+}
+
+.updates-back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.updates-back-link:hover {
+    text-decoration: underline;
+}
+
+.updates-page h1 {
+    margin: 0 0 8px;
+    color: #222;
+}
+
+.updates-subtitle {
+    color: #666;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.updates-loading,
+.updates-empty {
+    color: #999;
+}
+
+.updates-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 26px;
+}
+
+.updates-filter {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.updates-filter:hover {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.updates-filter-active {
+    background: #222;
+    border-color: #222;
+    color: #fff;
+}
+
+.updates-filter-active:hover {
+    background: #222;
+}
+
+.updates-day-heading {
+    margin: 30px 0 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #888;
+}
+
+.updates-day-heading:first-child {
+    margin-top: 0;
+}
+
+.updates-day {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* each update: the same frosted-glass card look as the bubbles */
+.update-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 18px 14px 14px;
+    border-radius: 22px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.34) 55%, rgba(255, 255, 255, 0.50) 100%),
+        rgba(232, 224, 240, 0.28);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow:
+        0 8px 26px rgba(70, 50, 100, 0.12),
+        0 1px 2px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(120, 100, 150, 0.12);
+}
+
+.update-icon {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    line-height: 1;
+    background: var(--tint, rgba(142, 142, 147, 0.2));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.update-body {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.update-text {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: #1d1d1f;
+    overflow-wrap: anywhere;
+}
+
+.update-meta {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: rgba(60, 60, 67, 0.62);
+}
+
+.update-type {
+    font-weight: 600;
+}
+
+.update-card[data-type="stock"]     { --tint: rgba(52, 120, 246, 0.20); }
+.update-card[data-type="streak"]    { --tint: rgba(255, 149, 0, 0.24); }
+.update-card[data-type="video"]     { --tint: rgba(255, 59, 48, 0.18); }
+.update-card[data-type="streamer"]  { --tint: rgba(175, 82, 222, 0.20); }
+.update-card[data-type="milestone"] { --tint: rgba(255, 204, 0, 0.32); }
+.update-card[data-type="cow"]       { --tint: rgba(48, 176, 120, 0.22); }
+.update-card[data-type="info"]      { --tint: rgba(142, 142, 147, 0.22); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .update-card {
+        background: rgba(250, 247, 252, 0.95);
+    }
+}

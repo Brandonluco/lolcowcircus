@@ -10,6 +10,7 @@
     const ENDPOINT = "/api/status-bubbles";
     const POLL_MS = 3 * 60 * 1000;
     const MAX_AGE_MS = 48 * 60 * 60 * 1000;
+    const MAX_VISIBLE = 5;           // newest N shown; the rest live on updates.html
     const SEEN_KEY = "cowtubeStatusBubblesSeen";
 
     const root = document.getElementById("statusBubbles");
@@ -149,13 +150,17 @@
         saveSeenId(Number(item.dataset.id));
     }
 
-    // Big-screen layout shows as many full bubbles as fit; hide the oldest
-    // until nothing overflows the panel.
+    // Shows the newest MAX_VISIBLE bubbles. On big screens it also hides
+    // the oldest of those, whole bubbles at a time, if the window is too
+    // short to fit them all (the history button always stays visible).
     function fitToHeight() {
 
         const items = Array.from(list.children);
 
         items.forEach((item) => item.classList.remove("is-clipped"));
+
+        items.slice(0, Math.max(0, items.length - MAX_VISIBLE))
+            .forEach((item) => item.classList.add("is-clipped"));
 
         if (!wideQuery.matches) {
             return;

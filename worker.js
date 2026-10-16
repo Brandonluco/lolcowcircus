@@ -966,15 +966,18 @@ const CACHEABLE_GET_SECONDS = new Map([
   ["/api/streamers", 60],
   ["/api/stock-history", 300],
   ["/api/articles", 60],
-  ["/api/status-bubbles", 60]
+  ["/api/status-bubbles", 60],
+  ["/api/status-bubbles/history", 120]
 ]);
 
 // Status bubbles: the little "what's happening on CowTube" feed shown in
 // the left gutter. Posted by the admin agent, read by everyone.
 const STATUS_BUBBLE_TYPES = ["stock", "streak", "video", "streamer", "milestone", "cow", "info"];
 const STATUS_BUBBLE_PUBLIC_LIMIT = 20;                 // most the public GET returns
-const STATUS_BUBBLE_KEEP = 30;                         // rows kept in the table
-const STATUS_BUBBLE_MAX_AGE_MS = 48 * 60 * 60 * 1000;  // anything older expires
+const STATUS_BUBBLE_KEEP = 200;                        // rows kept in the table
+const STATUS_BUBBLE_MAX_AGE_MS = 48 * 60 * 60 * 1000;  // the live feed only shows the last 48h
+const STATUS_BUBBLE_HISTORY_MS = 72 * 60 * 60 * 1000;  // the history page keeps 3 days; older rows are deleted
+const STATUS_BUBBLE_HISTORY_LIMIT = 200;               // most the history GET returns
 const STATUS_BUBBLE_DUPLICATE_WINDOW_MS = 6 * 60 * 60 * 1000;
 const STATUS_BUBBLE_MAX_LENGTH = 240;
 
@@ -1201,6 +1204,32 @@ export default {
 
     }
 
+    // Public: GET /api/status-bubbles/history -> everything from the past
+    // 3 days (up to 200), NEWEST FIRST. Powers updates.html. Edge-cached 2
+    // minutes and the table is tiny, so it costs almost nothing.
+    if (url.pathname === "/api/status-bubbles/history" && request.method === "GET") {
+
+      try {
+
+        const { results } = await env.DB
+          .prepare(
+            `SELECT id, type, message, created_at FROM status_bubbles
+             WHERE created_at >= ? ORDER BY id DESC LIMIT ?`
+          )
+          .bind(Date.now() - STATUS_BUBBLE_HISTORY_MS, STATUS_BUBBLE_HISTORY_LIMIT)
+          .all();
+
+        return Response.json(results);
+
+      } catch (err) {
+
+        console.log("status-bubbles history read failed:", err.message);
+        return Response.json([]);
+
+      }
+
+    }
+
     // Admin/service-token only: POST {type, message} adds a bubble,
     // DELETE ?id=123 removes one. Same requireAdmin check as every other
     // admin path (this exact path needs to be inside the Access app).
@@ -1257,15 +1286,15 @@ export default {
           .bind(type, message, now)
           .run();
 
-        // Keep the table from ever growing: drop expired rows and anything
-        // beyond the newest 30.
+        // Keep the table from ever growing: drop rows older than the 3-day
+        // history window and anything beyond the newest 200.
         await env.DB
           .prepare(
             `DELETE FROM status_bubbles
              WHERE created_at < ?
                 OR id NOT IN (SELECT id FROM status_bubbles ORDER BY id DESC LIMIT ?)`
           )
-          .bind(now - STATUS_BUBBLE_MAX_AGE_MS, STATUS_BUBBLE_KEEP)
+          .bind(now - STATUS_BUBBLE_HISTORY_MS, STATUS_BUBBLE_KEEP)
           .run();
 
         return Response.json({ success: true, id: result.meta.last_row_id }, { status: 201 });
