@@ -965,8 +965,18 @@ async function expireStaleInstagramLive(env) {
 const CACHEABLE_GET_SECONDS = new Map([
   ["/api/streamers", 60],
   ["/api/stock-history", 300],
-  ["/api/articles", 60]
+  ["/api/articles", 60],
+  ["/api/status-bubbles", 60]
 ]);
+
+// Status bubbles: the little "what's happening on CowTube" feed shown in
+// the left gutter. Posted by the admin agent, read by everyone.
+const STATUS_BUBBLE_TYPES = ["stock", "streak", "video", "streamer", "milestone", "info"];
+const STATUS_BUBBLE_PUBLIC_LIMIT = 20;                 // most the public GET returns
+const STATUS_BUBBLE_KEEP = 30;                         // rows kept in the table
+const STATUS_BUBBLE_MAX_AGE_MS = 48 * 60 * 60 * 1000;  // anything older expires
+const STATUS_BUBBLE_DUPLICATE_WINDOW_MS = 6 * 60 * 60 * 1000;
+const STATUS_BUBBLE_MAX_LENGTH = 240;
 
 export default {
 
@@ -1157,6 +1167,135 @@ export default {
       }
     }
     
+    // =====================
+    // STATUS BUBBLES
+    // =====================
+    // Public: GET /api/status-bubbles -> up to the last 20 bubbles from the
+    // past 48 hours, OLDEST FIRST (so the newest is last, chat-style).
+    // The table is tiny (pruned to 30 rows on every write) and the response
+    // is edge-cached for 60s, so this costs almost nothing in D1 reads.
+    if (url.pathname === "/api/status-bubbles" && request.method === "GET") {
+
+      try {
+
+        const { results } = await env.DB
+          .prepare(
+            `SELECT id, type, message, created_at FROM (
+               SELECT id, type, message, created_at FROM status_bubbles
+               WHERE created_at >= ? ORDER BY id DESC LIMIT ?
+             ) ORDER BY id ASC`
+          )
+          .bind(Date.now() - STATUS_BUBBLE_MAX_AGE_MS, STATUS_BUBBLE_PUBLIC_LIMIT)
+          .all();
+
+        return Response.json(results);
+
+      } catch (err) {
+
+        // Most likely the status_bubbles table hasn't been created yet.
+        // Show an empty feed rather than breaking anything.
+        console.log("status-bubbles read failed:", err.message);
+        return Response.json([]);
+
+      }
+
+    }
+
+    // Admin/service-token only: POST {type, message} adds a bubble,
+    // DELETE ?id=123 removes one. Same requireAdmin check as every other
+    // admin path (this exact path needs to be inside the Access app).
+    if (url.pathname === "/api/admin/status-bubbles") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method === "POST") {
+
+        let data;
+
+        try {
+          data = await request.json();
+        } catch (err) {
+          return Response.json({ error: "invalid_json" }, { status: 400 });
+        }
+
+        const type = data && typeof data.type === "string" ? data.type.trim().toLowerCase() : "";
+
+        if (!STATUS_BUBBLE_TYPES.includes(type)) {
+          return Response.json({
+            error: "invalid_type",
+            allowed: STATUS_BUBBLE_TYPES
+          }, { status: 400 });
+        }
+
+        // Collapse control characters/newlines so a bubble is always one tidy line.
+        const message = data && typeof data.message === "string"
+          ? data.message.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+
+        if (message.length === 0 || message.length > STATUS_BUBBLE_MAX_LENGTH) {
+          return Response.json({
+            error: "invalid_message",
+            detail: `Message must be 1-${STATUS_BUBBLE_MAX_LENGTH} characters.`
+          }, { status: 400 });
+        }
+
+        const now = Date.now();
+
+        // A retried job shouldn't post the same bubble twice.
+        const existing = await env.DB
+          .prepare("SELECT id FROM status_bubbles WHERE type = ? AND message = ? AND created_at >= ? LIMIT 1")
+          .bind(type, message, now - STATUS_BUBBLE_DUPLICATE_WINDOW_MS)
+          .first();
+
+        if (existing) {
+          return Response.json({ success: true, duplicate: true, id: existing.id });
+        }
+
+        const result = await env.DB
+          .prepare("INSERT INTO status_bubbles (type, message, created_at) VALUES (?, ?, ?)")
+          .bind(type, message, now)
+          .run();
+
+        // Keep the table from ever growing: drop expired rows and anything
+        // beyond the newest 30.
+        await env.DB
+          .prepare(
+            `DELETE FROM status_bubbles
+             WHERE created_at < ?
+                OR id NOT IN (SELECT id FROM status_bubbles ORDER BY id DESC LIMIT ?)`
+          )
+          .bind(now - STATUS_BUBBLE_MAX_AGE_MS, STATUS_BUBBLE_KEEP)
+          .run();
+
+        return Response.json({ success: true, id: result.meta.last_row_id }, { status: 201 });
+
+      }
+
+      if (request.method === "DELETE") {
+
+        const id = Number(url.searchParams.get("id"));
+
+        if (!Number.isInteger(id) || id <= 0) {
+          return Response.json({ error: "invalid_id" }, { status: 400 });
+        }
+
+        await env.DB
+          .prepare("DELETE FROM status_bubbles WHERE id = ?")
+          .bind(id)
+          .run();
+
+        return Response.json({ success: true });
+
+      }
+
+      return Response.json({ error: "method_not_allowed" }, {
+        status: 405,
+        headers: { Allow: "POST, DELETE" }
+      });
+
+    }
+
     // =====================
     // ADMIN WRITE PATHS (alert / featured videos / cow of the week)
     // =====================
