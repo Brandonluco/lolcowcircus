@@ -1728,3 +1728,94 @@ body {
 .hidden {
     display: none;
 }
+
+/* ==========================================================================
+   STREAMER PAGE STOCK BOX (sits under the video, same width)
+   ========================================================================== */
+.streamer-stock-box {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 0 0 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.streamer-stock-box:empty {
+    display: none;
+}
+
+.streamer-stock-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.streamer-stock-title {
+    font-weight: 600;
+    color: #222;
+    font-size: 0.95rem;
+}
+
+.streamer-stock-ticker {
+    margin-left: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.streamer-stock-value {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #888;
+}
+
+.streamer-stock-value-up { color: #1e7e34; }
+.streamer-stock-value-down { color: #a32d2d; }
+
+.streamer-stock-chart svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.streamer-stock-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.streamer-stock-ranges {
+    display: flex;
+    gap: 4px;
+}
+
+.streamer-stock-range {
+    background: #f2f2f2;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: #666;
+    cursor: pointer;
+}
+
+.streamer-stock-range:hover { background: #e8e8e8; }
+
+.streamer-stock-range-active {
+    background: #222;
+    border-color: #222;
+    color: #fff;
+}
+
+.streamer-stock-link {
+    font-size: 0.8rem;
+    color: #555;
+    text-decoration: none;
+}
+
+.streamer-stock-link:hover { text-decoration: underline; }

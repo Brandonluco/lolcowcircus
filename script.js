@@ -2254,6 +2254,110 @@ function getSafeYoutubeEmbedSrc(url) {
 
 }
 
+// Stock box for one streamer's page. Uses the existing per-streamer history
+// endpoint (indexed by streamer_id, so it only reads this streamer's rows)
+// and the shared chart code from stock-charts.js. Read-only: nothing here
+// writes to or changes any stock data.
+let streamerStockEntry = null;
+let streamerStockRange = "1m";
+
+function renderStreamerStockBox() {
+
+    const box = document.getElementById("streamer-stock-box");
+
+    if (!box || !streamerStockEntry) {
+        return;
+    }
+
+    const entry = streamerStockEntry;
+
+    const chartSvg = buildSingleStockChartSvg(entry, {
+        width: 640,
+        height: 200,
+        padding: 24,
+        rangeKey: streamerStockRange
+    });
+
+    let total = null;
+
+    if (entry.events.length > 0) {
+        total = entry.events.reduce((sum, event) => sum + event.points, 0);
+    }
+
+    const valueClass = total > 0 ? "streamer-stock-value-up" : (total < 0 ? "streamer-stock-value-down" : "");
+
+    const valueHtml = total === null
+        ? ""
+        : `<span class="streamer-stock-value ${valueClass}">${escapeForDisplay(formatStockValue(total))}</span>`;
+
+    const rangeButtonsHtml = Object.entries(STOCK_RANGES).map(([key, range]) => `
+        <button type="button"
+            class="streamer-stock-range ${key === streamerStockRange ? "streamer-stock-range-active" : ""}"
+            data-range="${key}">${escapeForDisplay(range.label)}</button>
+    `).join("");
+
+    box.innerHTML = `
+        <div class="streamer-stock-header">
+            <span class="streamer-stock-title">${escapeForDisplay(entry.streamer.name)} Stock
+                <span class="streamer-stock-ticker">${escapeForDisplay(tickerLabelFor(entry.streamer))}</span>
+            </span>
+            ${valueHtml}
+        </div>
+        <div class="streamer-stock-chart">${chartSvg}</div>
+        <div class="streamer-stock-footer">
+            <div class="streamer-stock-ranges">${rangeButtonsHtml}</div>
+            <a class="streamer-stock-link" href="/stock.html">Full stock page →</a>
+        </div>
+    `;
+
+}
+
+async function loadStreamerStockBox(streamer) {
+
+    const box = document.getElementById("streamer-stock-box");
+
+    if (!box || streamer.id === undefined || streamer.id === null) {
+        return;
+    }
+
+    streamerStockRange = "1m";
+
+    box.addEventListener("click", function (event) {
+        const button = event.target.closest(".streamer-stock-range");
+        if (!button) {
+            return;
+        }
+        streamerStockRange = button.dataset.range;
+        renderStreamerStockBox();
+    });
+
+    try {
+
+        const response = await fetch(`/api/streamers/${encodeURIComponent(streamer.id)}/stock-history`);
+
+        if (!response.ok) {
+            box.remove();
+            return;
+        }
+
+        const rows = await response.json();
+
+        streamerStockEntry = {
+            streamer: { id: streamer.id, name: streamer.name, ticker: streamer.ticker },
+            events: rows
+                .filter((row) => row.points !== null && row.changed_at !== null)
+                .map((row) => ({ points: row.points, changed_at: row.changed_at }))
+        };
+
+        renderStreamerStockBox();
+
+    } catch (err) {
+        // Never let a stock box problem break the rest of the streamer page.
+        box.remove();
+    }
+
+}
+
 async function renderStreamerArticles(container, slug) {
 
     const response = await fetch(`/api/streamers/${encodeURIComponent(slug)}/articles`);
@@ -2283,6 +2387,10 @@ async function renderStreamerArticles(container, slug) {
     container.appendChild(heading);
 
     container.insertAdjacentHTML("beforeend", renderStreamerWatchBlock(streamer));
+
+    // Stock box sits directly under the video (or watch button), same width.
+    container.insertAdjacentHTML("beforeend", `<div class="streamer-stock-box" id="streamer-stock-box"></div>`);
+    loadStreamerStockBox(streamer);
 
     if (articles.length === 0) {
         container.insertAdjacentHTML("beforeend", `<p class="no-comments">No articles about ${escapeForDisplay(streamer.name)} yet — check back soon.</p>`);
