@@ -8,6 +8,7 @@
     <link rel="profile" href="http://gmpg.org">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="slot-machine.css">
+    <link rel="stylesheet" href="status-bubbles.css">
     <link rel="icon" type="image/png" href="/Images/Favicon/faviconnew.png">
 </head>
 <body>
@@ -63,6 +64,15 @@
         <a href="FAQ.html" class="nav-bubble" aria-label="FAQ">❓</a>
         <a href="mailto:underground@cowtube.org" class="nav-bubble" aria-label="Contact">✉️</a>
     </nav>
+
+    <!-- CowTube news feed in the left gutter: glass bubbles on big screens,
+         round icons that open on hover/tap on smaller ones. Filled in by
+         status-bubbles.js from /api/status-bubbles; stays hidden while the
+         feed is empty. Same sticky-in-flow approach as the quick-nav
+         bubbles above, so it never shifts anything. -->
+    <aside class="status-bubbles" id="statusBubbles" aria-label="CowTube updates" hidden>
+        <ul class="status-bubbles-list" aria-live="polite"></ul>
+    </aside>
 
     <!-- Side archive promo banner — sits in the normal page flow right
          here (below the header/ticker/alert) and uses position: sticky,
@@ -340,6 +350,7 @@
 <script src="stock-charts.js"></script>
 <script src="script.js"></script>
 <script src="slot-machine.js"></script>
+<script src="status-bubbles.js"></script>
 
 </body>
 </html>

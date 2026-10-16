@@ -1,0 +1,356 @@
+/* ==========================================================================
+   STATUS BUBBLES — the "what's happening on CowTube" feed in the left gutter.
+
+   Two layouts from the same markup:
+   - >= 1880px  : full, readable glass bubbles (no hovering needed)
+   - 1500-1879px: small round glass icons; hover / focus / tap opens the
+                  full bubble to the right
+   - < 1500px   : hidden (no open gutter to sit in)
+
+   Positioned like .scroll-nav-bubbles / .ad-banner-side: sticky and in the
+   normal page flow, with a negative bottom margin that cancels its own
+   height, so it never pushes or overlaps anything.
+   ========================================================================== */
+
+.status-bubbles {
+    --sb-h: clamp(220px, calc(100vh - 360px), 560px);
+    --sb-push: 210px;               /* sits below the quick-nav bubbles */
+
+    display: none;
+    position: sticky;
+    top: 300px;
+    z-index: 900;
+    height: var(--sb-h);
+    margin-top: var(--sb-push);
+    margin-bottom: calc((var(--sb-h) + var(--sb-push)) * -1);
+    pointer-events: none;           /* only the bubbles themselves catch the mouse */
+}
+
+.status-bubbles[hidden] {
+    display: none !important;
+}
+
+/* A very soft pastel glow behind the feed. The page itself is nearly white,
+   so without this the frosted glass would have nothing to blur and would
+   just look like white cards. Kept faint on purpose. */
+.status-bubbles::before {
+    content: "";
+    position: absolute;
+    inset: -40px -30px;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(55% 32% at 30% 18%, rgba(176, 150, 255, 0.30), transparent 72%),
+        radial-gradient(50% 30% at 75% 52%, rgba(255, 164, 196, 0.26), transparent 72%),
+        radial-gradient(55% 30% at 35% 85%, rgba(140, 200, 255, 0.26), transparent 72%);
+    filter: blur(18px);
+}
+
+.status-bubbles-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ----- glass surface (shared by round icons, full bubbles, popovers) ----- */
+.status-bubble,
+.status-bubble-body {
+    position: relative;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.70) 0%, rgba(255, 255, 255, 0.22) 55%, rgba(255, 255, 255, 0.40) 100%),
+        rgba(232, 224, 240, 0.30);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow:
+        0 10px 30px rgba(70, 50, 100, 0.16),
+        0 1px 2px rgba(0, 0, 0, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(120, 100, 150, 0.14),
+        inset 0 0 0 1px rgba(150, 140, 175, 0.10);
+}
+
+/* soft specular highlight across the top-left, like light catching glass */
+.status-bubble::before,
+.status-bubble-body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(120% 90% at 8% 0%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 55%);
+    pointer-events: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .status-bubble,
+    .status-bubble-body {
+        background: rgba(250, 247, 252, 0.94);
+    }
+}
+
+.status-bubble {
+    pointer-events: auto;
+    cursor: default;
+    outline: none;
+    animation: statusBubbleIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: var(--sb-delay, 0s);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.status-bubble.is-clipped {
+    display: none;
+}
+
+@keyframes statusBubbleIn {
+    from { opacity: 0; transform: translateX(-16px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+}
+
+.status-bubble-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    line-height: 1;
+    background: var(--sb-tint, rgba(142, 142, 147, 0.2));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.status-bubble-text {
+    display: block;
+    font-size: 0.82rem;
+    line-height: 1.38;
+    color: #1d1d1f;
+    overflow-wrap: anywhere;
+}
+
+.status-bubble-meta {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: rgba(60, 60, 67, 0.62);
+}
+
+/* what colour each kind of news gets on its little icon disc */
+.status-bubble[data-type="stock"]     { --sb-tint: rgba(52, 120, 246, 0.20); }
+.status-bubble[data-type="streak"]    { --sb-tint: rgba(255, 149, 0, 0.24); }
+.status-bubble[data-type="video"]     { --sb-tint: rgba(255, 59, 48, 0.18); }
+.status-bubble[data-type="streamer"]  { --sb-tint: rgba(175, 82, 222, 0.20); }
+.status-bubble[data-type="milestone"] { --sb-tint: rgba(255, 204, 0, 0.32); }
+.status-bubble[data-type="info"]      { --sb-tint: rgba(142, 142, 147, 0.22); }
+
+/* ==========================================================================
+   SMALL SCREENS WITH A BIT OF GUTTER: round icons (1500px - 1879px)
+   ========================================================================== */
+@media (min-width: 1500px) {
+
+    .status-bubbles {
+        display: block;
+        --sb-icon: 36px;
+        width: var(--sb-icon);
+        margin-left: 6px;
+    }
+
+    .status-bubbles-list {
+        overflow: visible;
+    }
+
+    .status-bubble {
+        width: var(--sb-icon);
+        height: var(--sb-icon);
+        border-radius: 50%;
+        flex: 0 0 auto;
+        cursor: pointer;
+    }
+
+    .status-bubble:nth-last-child(n+8) {
+        display: none;               /* icons: only the 7 newest */
+    }
+
+    .status-bubble-icon {
+        width: 100%;
+        height: 100%;
+        font-size: 1.05rem;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .status-bubble:hover,
+    .status-bubble:focus-visible,
+    .status-bubble.open {
+        transform: scale(1.1);
+        z-index: 2;
+    }
+
+    .status-bubble:focus-visible {
+        box-shadow: 0 0 0 3px rgba(52, 120, 246, 0.45), 0 10px 30px rgba(70, 50, 100, 0.16);
+    }
+
+    /* the full bubble pops out to the right of the icon */
+    .status-bubble-body {
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 50%;
+        width: 250px;
+        padding: 11px 15px;
+        border-radius: 20px;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-50%) translateX(-8px) scale(0.97);
+        transform-origin: left center;
+        transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.2s;
+        background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.40) 100%),
+            rgba(232, 224, 240, 0.35);
+    }
+
+    .status-bubble:hover .status-bubble-body,
+    .status-bubble:focus-visible .status-bubble-body,
+    .status-bubble.open .status-bubble-body {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(0) scale(1);
+        transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* "something new here" dot until the visitor has looked at it */
+    .status-bubble.is-new::after {
+        content: "";
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #ff3b30;
+        border: 2px solid #fcfcfc;
+        box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.5);
+        animation: statusBubblePulse 2s ease-out infinite;
+    }
+
+    .status-bubble-type {
+        font-weight: 600;
+    }
+}
+
+@keyframes statusBubblePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.5); }
+    70%  { box-shadow: 0 0 0 9px rgba(255, 59, 48, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+
+/* icons a little larger and centred in the gutter once there's room */
+@media (min-width: 1600px) {
+    .status-bubbles {
+        --sb-icon: 44px;
+        margin-left: 28px;           /* lines up under the 52px quick-nav bubbles */
+    }
+    .status-bubble-icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* ==========================================================================
+   BIG SCREENS: full readable bubbles (>= 1880px)
+   ========================================================================== */
+@media (min-width: 1880px) {
+
+    .status-bubbles {
+        --sb-w: min(300px, calc(50vw - 759px));
+        width: var(--sb-w);
+        margin-left: max(16px, calc((50vw - 715px - var(--sb-w)) / 2));
+    }
+
+    .status-bubbles-list {
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+        padding: 6px 36px 12px;
+        margin: 0 -36px;
+    }
+
+    .status-bubble {
+        width: auto;
+        height: auto;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px 15px 11px 11px;
+        border-radius: 22px;
+        cursor: default;
+    }
+
+    .status-bubble:nth-last-child(n+8) {
+        display: flex;               /* full bubbles: as many as fit (JS clips the rest) */
+    }
+
+    .status-bubble.is-clipped {
+        display: none;
+    }
+
+    .status-bubble:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 14px 34px rgba(70, 50, 100, 0.20),
+            0 1px 2px rgba(0, 0, 0, 0.07),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95),
+            inset 0 -1px 0 rgba(120, 100, 150, 0.14),
+            inset 0 0 0 1px rgba(150, 140, 175, 0.10);
+    }
+
+    .status-bubble-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+        background: var(--sb-tint, rgba(142, 142, 147, 0.2));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .status-bubble-body {
+        position: relative;
+        left: auto;
+        top: auto;
+        width: auto;
+        min-width: 0;
+        flex: 1 1 auto;
+        padding: 1px 0 0;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: none;
+        border-radius: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .status-bubble-body::before {
+        display: none;
+    }
+
+    .status-bubble.is-new::after {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .status-bubble,
+    .status-bubble-body {
+        animation: none !important;
+        transition: none !important;
+    }
+    .status-bubble.is-new::after {
+        animation: none !important;
+    }
+}
