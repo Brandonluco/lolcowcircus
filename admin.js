@@ -1307,6 +1307,102 @@ if (clearChatButton) {
 
 }
 
+
+// ---------- News bubbles (left-hand feed on the site) ----------
+
+const bubbleType = document.getElementById("bubbleType");
+const bubbleMessage = document.getElementById("bubbleMessage");
+const postBubbleButton = document.getElementById("postBubbleButton");
+const bubbleStatus = document.getElementById("bubbleStatus");
+const bubbleList = document.getElementById("bubbleList");
+
+async function loadBubbles() {
+
+    try {
+
+        // ?fresh=1 skips the 60-second cache so a new post shows up right away.
+        const response = await fetch("/api/status-bubbles?fresh=1");
+
+        if (!response.ok) {
+            bubbleList.innerHTML = "<p>Couldn't load bubbles.</p>";
+            return;
+        }
+
+        const bubbles = await response.json();
+
+        if (bubbles.length === 0) {
+            bubbleList.innerHTML = "<p>No bubbles right now.</p>";
+            return;
+        }
+
+        bubbleList.innerHTML = bubbles.slice().reverse().map(bubble => `
+            <div class="admin-article-card">
+                <strong>${escapeForDisplay(bubble.type)}</strong>
+                <p>${escapeForDisplay(bubble.message)}</p>
+                <button onclick="deleteBubble(${Number(bubble.id)})">Remove</button>
+            </div>
+        `).join("");
+
+    } catch (err) {
+        bubbleList.innerHTML = "<p>Couldn't load bubbles.</p>";
+    }
+
+}
+
+async function deleteBubble(id) {
+
+    await fetch(`/api/admin/status-bubbles?id=${encodeURIComponent(id)}`, {
+        method: "DELETE"
+    });
+
+    loadBubbles();
+
+}
+
+postBubbleButton.addEventListener("click", async function() {
+
+    const message = bubbleMessage.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    bubbleStatus.textContent = "Posting...";
+
+    const response = await fetch("/api/admin/status-bubbles", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            type: bubbleType.value,
+            message: message
+        })
+    });
+
+    if (!response.ok) {
+        bubbleStatus.textContent = "Couldn't post the bubble. (Have you run status-bubbles.sql in the D1 console yet?)";
+        return;
+    }
+
+    const result = await response.json();
+
+    bubbleStatus.textContent = result.duplicate
+        ? "That exact bubble was already posted recently, so it wasn't added again."
+        : "Posted.";
+
+    bubbleMessage.value = "";
+
+    loadBubbles();
+
+});
+
+bubbleMessage.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        postBubbleButton.click();
+    }
+});
+
 loadStreamers();
 displayCurrentAlert();
 displayCurrentSongOfWeek();
@@ -1315,3 +1411,4 @@ loadArticles();
 loadFeaturedVideos();
 displayArticleComments();
 displayBannedIps();
+loadBubbles();

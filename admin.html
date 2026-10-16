@@ -128,6 +128,30 @@
 </section>
 
 <section>
+    <h2>News Bubbles</h2>
+
+    <label>Shown in the left-hand feed on the site (last 48 hours, newest at the bottom). Start the message with an emoji to use it as the bubble's icon:</label>
+    <br><br>
+
+    <select id="bubbleType" aria-label="Bubble type">
+        <option value="info">💬 News</option>
+        <option value="stock">📈 Market</option>
+        <option value="streak">🔥 Streak</option>
+        <option value="video">🎬 New video</option>
+        <option value="streamer">⭐ New streamer</option>
+        <option value="milestone">🏆 Milestone</option>
+    </select>
+
+    <input type="text" id="bubbleMessage" maxlength="240" placeholder="e.g. 🔥 JR is on a 14-day streaming streak" aria-label="Bubble message">
+
+    <button type="button" id="postBubbleButton">Post Bubble</button>
+
+    <p id="bubbleStatus" class="admin-note"></p>
+
+    <div id="bubbleList"></div>
+</section>
+
+<section>
     <h2>Featured Videos</h2>
 
     <p class="admin-note">
