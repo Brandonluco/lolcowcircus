@@ -971,7 +971,7 @@ const CACHEABLE_GET_SECONDS = new Map([
 
 // Status bubbles: the little "what's happening on CowTube" feed shown in
 // the left gutter. Posted by the admin agent, read by everyone.
-const STATUS_BUBBLE_TYPES = ["stock", "streak", "video", "streamer", "milestone", "info"];
+const STATUS_BUBBLE_TYPES = ["stock", "streak", "video", "streamer", "milestone", "cow", "info"];
 const STATUS_BUBBLE_PUBLIC_LIMIT = 20;                 // most the public GET returns
 const STATUS_BUBBLE_KEEP = 30;                         // rows kept in the table
 const STATUS_BUBBLE_MAX_AGE_MS = 48 * 60 * 60 * 1000;  // anything older expires

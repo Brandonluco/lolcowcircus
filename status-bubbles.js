@@ -26,6 +26,7 @@
         video:     { icon: "🎬", label: "New video" },
         streamer:  { icon: "⭐", label: "New streamer" },
         milestone: { icon: "🏆", label: "Milestone" },
+        cow:       { icon: "🐄", label: "Cow Updates" },
         info:      { icon: "💬", label: "News" }
     };
 

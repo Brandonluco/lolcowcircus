@@ -144,6 +144,7 @@
 .status-bubble[data-type="video"]     { --sb-tint: rgba(255, 59, 48, 0.18); }
 .status-bubble[data-type="streamer"]  { --sb-tint: rgba(175, 82, 222, 0.20); }
 .status-bubble[data-type="milestone"] { --sb-tint: rgba(255, 204, 0, 0.32); }
+.status-bubble[data-type="cow"]       { --sb-tint: rgba(48, 176, 120, 0.22); }
 .status-bubble[data-type="info"]      { --sb-tint: rgba(142, 142, 147, 0.22); }
 
 /* ==========================================================================
