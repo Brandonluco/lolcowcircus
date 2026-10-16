@@ -339,6 +339,19 @@
         display: none;
     }
 
+    /* The icon layout's hover/focus/tap rules also reach this size; without
+       these overrides they slid the text up out of its bubble on hover. */
+    .status-bubble:hover .status-bubble-body,
+    .status-bubble:focus-visible .status-bubble-body,
+    .status-bubble.open .status-bubble-body {
+        transform: none;
+    }
+
+    .status-bubble:focus-visible,
+    .status-bubble.open {
+        transform: none;
+    }
+
     .status-bubble.is-new::after {
         display: none;
     }
