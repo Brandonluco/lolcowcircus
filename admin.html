@@ -153,12 +153,26 @@
 </section>
 
 <section>
+    <h2>Instagram Strip</h2>
+
+    <p class="admin-note">
+        The Instagram posts shown in the sideways strip on the homepage.
+        They're added automatically; use Remove here if one shouldn't be shown.
+        The homepage only shows posts from the last 7 days, 2 per streamer.
+    </p>
+
+    <div id="instagramPostList"></div>
+</section>
+
+<section>
     <h2>Featured Videos</h2>
 
     <p class="admin-note">
         Paste a YouTube <em>embed</em> link (the kind that starts with
         https://www.youtube.com/embed/...), same as the Article Manager's
-        YouTube field. This shows up under the chat box on the homepage.
+        YouTube field. Up to 3 show on the homepage, in a row under the
+        Featured Now section, oldest to newest. If you add more than 3, the
+        3 newest show (the rest stay in this list).
     </p>
 
     <input type="text" id="featuredVideoTitle" placeholder="Title (optional)" aria-label="Featured video title">

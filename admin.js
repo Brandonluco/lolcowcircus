@@ -1403,6 +1403,54 @@ bubbleMessage.addEventListener("keydown", function(event) {
     }
 });
 
+
+// ---------- Instagram strip (remove-only; posts arrive automatically) ----------
+
+const instagramPostList = document.getElementById("instagramPostList");
+
+async function loadInstagramPosts() {
+
+    try {
+
+        const response = await fetch("/api/instagram-feed?fresh=1");
+
+        if (!response.ok) {
+            instagramPostList.innerHTML = "<p>Couldn't load Instagram posts.</p>";
+            return;
+        }
+
+        const posts = await response.json();
+
+        if (posts.length === 0) {
+            instagramPostList.innerHTML = "<p>No Instagram posts stored yet.</p>";
+            return;
+        }
+
+        instagramPostList.innerHTML = posts.slice(0, 30).map(post => `
+            <div class="admin-article-card">
+                <strong>${escapeForDisplay(post.streamer_name)}</strong>
+                <p>${escapeForDisplay((post.caption || "(no caption)").slice(0, 120))}</p>
+                <p>${escapeForDisplay(new Date(post.posted_at).toLocaleString())}</p>
+                <button onclick="deleteInstagramPost('${escapeForDisplay(post.post_id)}')">Remove</button>
+            </div>
+        `).join("");
+
+    } catch (err) {
+        instagramPostList.innerHTML = "<p>Couldn't load Instagram posts.</p>";
+    }
+
+}
+
+async function deleteInstagramPost(postId) {
+
+    await fetch(`/api/admin/instagram-feed?post_id=${encodeURIComponent(postId)}`, {
+        method: "DELETE"
+    });
+
+    loadInstagramPosts();
+
+}
+
 loadStreamers();
 displayCurrentAlert();
 displayCurrentSongOfWeek();
@@ -1412,3 +1460,4 @@ loadFeaturedVideos();
 displayArticleComments();
 displayBannedIps();
 loadBubbles();
+loadInstagramPosts();

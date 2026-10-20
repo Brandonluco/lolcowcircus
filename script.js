@@ -543,46 +543,72 @@ async function loadAlert() {
 
 loadAlert();
 
+// Featured videos: up to 3 slots, shown in a row under the "Featured Now"
+// section on the homepage only (this same template is reused for the
+// streamer directory, streamer pages and article pages, which skip it).
+// If more than 3 have been added, the 3 newest show, oldest-to-newest left
+// to right. Nothing is deleted — the admin panel still lists every one.
+const FEATURED_VIDEO_SLOTS = 3;
+
 async function loadFeaturedVideos() {
 
-    const response = await fetch("/api/featured-videos");
+    const container = document.getElementById("featured-videos-container");
 
-    const videos = await response.json();
-
-    const list = document.getElementById("featured-videos-list");
-
-    if (!list) {
+    if (!container) {
         return;
     }
 
-    if (!videos || videos.length === 0) {
-
-        list.innerHTML = `<p class="featured-videos-empty">No featured videos right now.</p>`;
-
+    if (window.SHOW_STREAMER_DIRECTORY || window.SINGLE_STREAMER_SLUG || window.SINGLE_ARTICLE_SLUG) {
         return;
-
     }
 
-    list.innerHTML = videos.map(video => {
+    try {
 
-        const safeSrc = getSafeYoutubeEmbedSrc(video.embed_url);
+        const response = await fetch("/api/featured-videos");
 
-        if (!safeSrc) {
-            return "";
+        if (!response.ok) {
+            return;
         }
 
-        return `
-        <div class="featured-video-item">
-            <div class="video-container">
-                <iframe src="${safeSrc}"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>
-            </div>
-            ${video.title ? `<p class="featured-video-title">${escapeForDisplay(video.title)}</p>` : ""}
-        </div>
-    `;
+        const videos = await response.json();
 
-    }).join("");
+        // The API sends newest first; take the newest few, then show them
+        // in the order they were added.
+        const shown = (Array.isArray(videos) ? videos : [])
+            .map((video) => ({ video, src: getSafeYoutubeEmbedSrc(video.embed_url) }))
+            .filter((entry) => entry.src)
+            .slice(0, FEATURED_VIDEO_SLOTS)
+            .reverse();
+
+        if (shown.length === 0) {
+            container.innerHTML = "";
+            return;
+        }
+
+        container.innerHTML = `
+            <section class="featured-videos-row" aria-label="Featured videos">
+                <h2 class="featured-videos-row-title">🎬 Featured Videos</h2>
+                <div class="featured-videos-grid">
+                    ${shown.map(({ video, src }) => `
+                        <div class="featured-video-item">
+                            <div class="video-container">
+                                <iframe src="${src}"
+                                    loading="lazy"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen></iframe>
+                            </div>
+                            ${video.title ? `<p class="featured-video-title">${escapeForDisplay(video.title)}</p>` : ""}
+                        </div>
+                    `).join("")}
+                </div>
+            </section>
+        `;
+
+    } catch (err) {
+
+        console.log("Failed to load featured videos:", err.message);
+
+    }
 
 }
 

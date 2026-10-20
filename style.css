@@ -1889,3 +1889,36 @@ body {
         animation: none;
     }
 }
+
+/* ==========================================================================
+   FEATURED VIDEOS ROW (homepage, under "Featured Now") — up to 3 slots
+   ========================================================================== */
+.featured-videos-row {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 35px;
+}
+
+.featured-videos-row-title {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    color: #222;
+}
+
+.featured-videos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.featured-videos-grid .featured-video-item .video-container {
+    margin: 0;
+}
+
+@media (max-width: 760px) {
+    .featured-videos-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

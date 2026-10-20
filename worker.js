@@ -967,8 +967,115 @@ const CACHEABLE_GET_SECONDS = new Map([
   ["/api/stock-history", 300],
   ["/api/articles", 60],
   ["/api/status-bubbles", 60],
-  ["/api/status-bubbles/history", 120]
+  ["/api/status-bubbles/history", 120],
+  ["/api/instagram-feed", 120]
 ]);
+
+// Instagram strip (the horizontal scroller on the homepage sidebar). Posts
+// are pushed in by the admin agent; nothing here talks to Instagram's API.
+// Whether to keep our own copy of each image: Instagram's image links are
+// signed and expire within days, so hotlinking them breaks. With this on,
+// the worker downloads each new image once into R2 and serves that copy.
+// Set to false to hotlink the original URLs instead (no copies stored).
+const INSTAGRAM_CACHE_IMAGES = true;
+// Only image links from these hosts are accepted (and fetched).
+const INSTAGRAM_IMAGE_HOST_SUFFIXES = ["cdninstagram.com", "fbcdn.net", "instagram.com"];
+const INSTAGRAM_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const INSTAGRAM_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;  // rows + cached images older than this are deleted
+const INSTAGRAM_MAX_ROWS = 300;
+const INSTAGRAM_PUBLIC_LIMIT = 60;
+const INSTAGRAM_MAX_CAPTION = 500;
+
+function hostMatchesSuffix(hostname, suffixes) {
+  return suffixes.some((suffix) => hostname === suffix || hostname.endsWith("." + suffix));
+}
+
+// Accepts epoch seconds, epoch milliseconds, or an ISO date string; returns
+// epoch milliseconds, or null if it isn't a sensible time.
+function parseInstagramPostedAt(value) {
+
+  let ms = null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    ms = value < 1e12 ? value * 1000 : value;
+  } else if (typeof value === "string" && value.trim() !== "") {
+    ms = /^\d+$/.test(value.trim())
+      ? (Number(value) < 1e12 ? Number(value) * 1000 : Number(value))
+      : Date.parse(value);
+  }
+
+  if (ms === null || !Number.isFinite(ms)) return null;
+  if (ms > Date.now() + 24 * 60 * 60 * 1000) return null;
+  if (ms < Date.UTC(2010, 0, 1)) return null;
+
+  return Math.round(ms);
+
+}
+
+// Downloads one Instagram image into R2 (our own copy). Returns the R2 key,
+// or null if anything about it is off (the post is still saved, hotlinking
+// its original URL until a later push manages to cache it).
+async function cacheInstagramImage(env, postId, imageUrl) {
+
+  try {
+
+    const response = await fetch(imageUrl, {
+      redirect: "manual",
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; CowTubeBot/1.0)" },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.status !== 200) return null;
+
+    const contentType = (response.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[contentType];
+
+    if (!extension) return null;
+
+    const declared = Number(response.headers.get("Content-Length") || 0);
+    if (declared > INSTAGRAM_MAX_IMAGE_BYTES) return null;
+
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength === 0 || bytes.byteLength > INSTAGRAM_MAX_IMAGE_BYTES) return null;
+
+    const key = `instagram/${postId}.${extension}`;
+
+    await env.IMAGES.put(key, bytes, { httpMetadata: { contentType } });
+
+    return key;
+
+  } catch (err) {
+    console.log("instagram image cache failed:", err.message);
+    return null;
+  }
+
+}
+
+// Deletes expired rows (and their cached images), and anything beyond the
+// newest INSTAGRAM_MAX_ROWS. Runs after each new post, 50 rows at a time.
+async function pruneInstagramPosts(env) {
+
+  const { results } = await env.DB
+    .prepare(
+      `SELECT post_id, image_key FROM instagram_posts
+       WHERE posted_at < ?
+          OR id NOT IN (SELECT id FROM instagram_posts ORDER BY posted_at DESC LIMIT ?)
+       LIMIT 50`
+    )
+    .bind(Date.now() - INSTAGRAM_RETENTION_MS, INSTAGRAM_MAX_ROWS)
+    .all();
+
+  for (const row of results) {
+
+    if (row.image_key) {
+      await env.IMAGES.delete(row.image_key);
+    }
+
+    await env.DB.prepare("DELETE FROM instagram_posts WHERE post_id = ?").bind(row.post_id).run();
+
+  }
+
+}
 
 // Status bubbles: the little "what's happening on CowTube" feed shown in
 // the left gutter. Posted by the admin agent, read by everyone.
@@ -1170,6 +1277,186 @@ export default {
       }
     }
     
+    // =====================
+    // INSTAGRAM STRIP
+    // =====================
+    // Public: GET /api/instagram-feed -> stored posts, newest first. The
+    // page itself decides how many to show (age, per-streamer cap). Edge-
+    // cached for 2 minutes. If we cached an image copy, image_url points at
+    // it; otherwise it's the original Instagram link.
+    if (url.pathname === "/api/instagram-feed" && request.method === "GET") {
+
+      try {
+
+        const { results } = await env.DB
+          .prepare(
+            `SELECT post_id, streamer_name, image_url, image_key, caption, permalink, posted_at
+             FROM instagram_posts ORDER BY posted_at DESC LIMIT ?`
+          )
+          .bind(INSTAGRAM_PUBLIC_LIMIT)
+          .all();
+
+        return Response.json(results.map((row) => ({
+          post_id: row.post_id,
+          streamer_name: row.streamer_name,
+          image_url: row.image_key ? `/api/images/${encodeURIComponent(row.image_key)}` : row.image_url,
+          caption: row.caption,
+          permalink: row.permalink,
+          posted_at: row.posted_at
+        })));
+
+      } catch (err) {
+
+        // Most likely the instagram_posts table hasn't been created yet.
+        console.log("instagram-feed read failed:", err.message);
+        return Response.json([]);
+
+      }
+
+    }
+
+    // Admin/service-token only. POST {streamer_name, post_id, image_url,
+    // caption, permalink, posted_at} adds a post, or — if that post_id is
+    // already stored — just makes sure it has an image (no duplicate rows).
+    // DELETE ?post_id=... removes one.
+    if (url.pathname === "/api/admin/instagram-feed") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method === "POST") {
+
+        let data;
+
+        try {
+          data = await request.json();
+        } catch (err) {
+          return Response.json({ error: "invalid_json" }, { status: 400 });
+        }
+
+        data = data || {};
+
+        const clean = (value, max) => typeof value === "string"
+          ? value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max)
+          : "";
+
+        const streamerName = clean(data.streamer_name, 80);
+        const postId = typeof data.post_id === "string" ? data.post_id.trim() : (typeof data.post_id === "number" ? String(data.post_id) : "");
+        const caption = clean(data.caption, INSTAGRAM_MAX_CAPTION);
+
+        if (!streamerName) {
+          return Response.json({ error: "invalid_streamer_name" }, { status: 400 });
+        }
+
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(postId)) {
+          return Response.json({ error: "invalid_post_id", detail: "Letters, numbers, _ and - only, up to 64 characters." }, { status: 400 });
+        }
+
+        let imageUrl = null;
+        let permalink = null;
+
+        try {
+          const parsedImage = new URL(data.image_url);
+          if (parsedImage.protocol === "https:" && hostMatchesSuffix(parsedImage.hostname, INSTAGRAM_IMAGE_HOST_SUFFIXES)) {
+            imageUrl = parsedImage.href;
+          }
+        } catch (err) { /* handled below */ }
+
+        try {
+          const parsedLink = new URL(data.permalink);
+          if (parsedLink.protocol === "https:" && hostMatchesSuffix(parsedLink.hostname, ["instagram.com"])) {
+            permalink = parsedLink.href;
+          }
+        } catch (err) { /* handled below */ }
+
+        if (!imageUrl) {
+          return Response.json({ error: "invalid_image_url", detail: "Must be an https link on an Instagram/Facebook CDN host." }, { status: 400 });
+        }
+
+        if (!permalink) {
+          return Response.json({ error: "invalid_permalink", detail: "Must be an https instagram.com link." }, { status: 400 });
+        }
+
+        const postedAt = parseInstagramPostedAt(data.posted_at);
+
+        if (postedAt === null) {
+          return Response.json({ error: "invalid_posted_at" }, { status: 400 });
+        }
+
+        const existing = await env.DB
+          .prepare("SELECT image_key FROM instagram_posts WHERE post_id = ?")
+          .bind(postId)
+          .first();
+
+        if (existing) {
+
+          // Already stored. If we never managed to keep an image copy (or
+          // caching is off), take this push's fresh link instead.
+          let refreshed = false;
+
+          if (!existing.image_key) {
+
+            const key = INSTAGRAM_CACHE_IMAGES ? await cacheInstagramImage(env, postId, imageUrl) : null;
+
+            await env.DB
+              .prepare("UPDATE instagram_posts SET image_url = ?, image_key = ? WHERE post_id = ?")
+              .bind(imageUrl, key, postId)
+              .run();
+
+            refreshed = true;
+
+          }
+
+          return Response.json({ success: true, duplicate: true, refreshed });
+
+        }
+
+        const imageKey = INSTAGRAM_CACHE_IMAGES ? await cacheInstagramImage(env, postId, imageUrl) : null;
+
+        await env.DB
+          .prepare(
+            `INSERT INTO instagram_posts (post_id, streamer_name, image_url, image_key, caption, permalink, posted_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(postId, streamerName, imageUrl, imageKey, caption, permalink, postedAt, Date.now())
+          .run();
+
+        await pruneInstagramPosts(env);
+
+        return Response.json({ success: true, cached_image: Boolean(imageKey) }, { status: 201 });
+
+      }
+
+      if (request.method === "DELETE") {
+
+        const postId = url.searchParams.get("post_id") || "";
+
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(postId)) {
+          return Response.json({ error: "invalid_post_id" }, { status: 400 });
+        }
+
+        const row = await env.DB
+          .prepare("SELECT image_key FROM instagram_posts WHERE post_id = ?")
+          .bind(postId)
+          .first();
+
+        if (row && row.image_key) {
+          await env.IMAGES.delete(row.image_key);
+        }
+
+        await env.DB.prepare("DELETE FROM instagram_posts WHERE post_id = ?").bind(postId).run();
+
+        return Response.json({ success: true });
+
+      }
+
+      return Response.json({ error: "method_not_allowed" }, {
+        status: 405,
+        headers: { Allow: "POST, DELETE" }
+      });
+
+    }
+
     // =====================
     // STATUS BUBBLES
     // =====================
@@ -2547,7 +2834,7 @@ export default {
 
       // Slot symbol images get a brand-new key every time one is replaced,
       // so a given URL's content never changes — safe to cache for a year.
-      if (key.startsWith("slots/")) {
+      if (key.startsWith("slots/") || key.startsWith("instagram/")) {
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
       }
 

@@ -1,0 +1,126 @@
+/* ==========================================================================
+   INSTAGRAM STRIP (homepage sidebar, under the slot machine)
+   ========================================================================== */
+.instagram-strip {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.instagram-strip .chat-header {
+    margin: -20px -20px 15px;
+    border-radius: 8px 8px 0 0;
+}
+
+.instagram-strip-viewport {
+    position: relative;
+}
+
+.instagram-strip-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 4px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+
+.instagram-tile {
+    flex: 0 0 148px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    scroll-snap-align: start;
+    text-decoration: none;
+    color: #222;
+}
+
+.instagram-tile-image {
+    display: block;
+    width: 148px;
+    height: 148px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f0f0f2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.instagram-tile-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+}
+
+.instagram-tile:hover .instagram-tile-image img,
+.instagram-tile:focus-visible .instagram-tile-image img {
+    transform: scale(1.04);
+}
+
+.instagram-tile:focus-visible {
+    outline: 2px solid #3478f6;
+    outline-offset: 3px;
+    border-radius: 10px;
+}
+
+.instagram-tile-name {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.instagram-tile-caption {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: #666;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.instagram-tile-time {
+    font-size: 0.7rem;
+    color: #999;
+}
+
+.instagram-strip-arrow {
+    position: absolute;
+    top: 62px;
+    z-index: 2;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    color: #333;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0 2px;
+}
+
+.instagram-strip-arrow[hidden] {
+    display: none;
+}
+
+.instagram-strip-arrow-prev { left: -8px; }
+.instagram-strip-arrow-next { right: -8px; }
+
+/* touch screens swipe; no need for arrows */
+@media (hover: none) {
+    .instagram-strip-arrow {
+        display: none;
+    }
+}

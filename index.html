@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="slot-machine.css">
     <link rel="stylesheet" href="status-bubbles.css">
+    <link rel="stylesheet" href="instagram-strip.css">
     <link rel="icon" type="image/png" href="/Images/Favicon/faviconnew.png">
 </head>
 <body>
@@ -97,6 +98,7 @@
     <div class="container">
         <main class="content-area">
 <div id="featured-streamer-container"></div>
+<div id="featured-videos-container"></div>
 <div id="articles-container"></div>
         </main>
         
@@ -208,16 +210,22 @@
 
     </section>
 
-    <div class="featured-videos-box">
-
+    <!-- Instagram strip: the latest posts from streamers, in a sideways
+         scroller. Fed by /api/instagram-feed (see instagram-strip.js, where
+         the display rules live as constants). Starts hidden and only shows
+         if there's at least one recent post to display. (This is where the
+         Featured Videos box used to be; featured videos now sit under the
+         Featured Now section at the top of the homepage.) -->
+    <section class="instagram-strip hidden" id="instagramStrip" aria-label="Recent Instagram posts from streamers">
         <div class="chat-header">
-            Featured Videos
+            📸 Streamers on Instagram
         </div>
-
-        <div id="featured-videos-list" class="featured-videos-list">
+        <div class="instagram-strip-viewport">
+            <button type="button" class="instagram-strip-arrow instagram-strip-arrow-prev" id="instagramPrev" aria-label="Scroll left" hidden>‹</button>
+            <div class="instagram-strip-track" id="instagramStripTrack"></div>
+            <button type="button" class="instagram-strip-arrow instagram-strip-arrow-next" id="instagramNext" aria-label="Scroll right" hidden>›</button>
         </div>
-
-    </div>
+    </section>
 
     <!-- Real Instagram embed (their own official embed.js, same mechanism
          as embedding a tweet) — not a custom video player, so there's no
@@ -357,6 +365,7 @@
 <script src="script.js"></script>
 <script src="slot-machine.js"></script>
 <script src="status-bubbles.js"></script>
+<script src="instagram-strip.js"></script>
 
 </body>
 </html>
