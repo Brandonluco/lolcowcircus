@@ -2032,6 +2032,232 @@ function formatTimeAgo(isoString) {
 
 }
 
+// What counts as "live" for the directory: the automatic checks (YouTube/
+// Kick, done by the worker's cron) or the manual Instagram toggle.
+function getDirectoryLiveState(streamer) {
+
+    const isAutoLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
+    const isManualLive = Number(streamer.instagram_is_live) === 1;
+
+    return { isAutoLive, isManualLive, isLive: isAutoLive || isManualLive };
+
+}
+
+// One streamer card. Used by both the "Live Now" showcase and the full list,
+// so a streamer looks identical in either place.
+function buildDirectoryCard(streamer) {
+
+    const card = document.createElement("a");
+    card.className = "streamer-directory-card";
+    card.href = `/streamer/${streamer.slug}`;
+
+    const statusIcon = streamer.status === "online" ? "🟢"
+        : streamer.status === "away" ? "🟡"
+        : "⚫";
+
+    // Real "currently broadcasting" state (checked server-side every 15 min),
+    // separate from the manual online/away/offline status above.
+    const { isAutoLive, isManualLive, isLive } = getDirectoryLiveState(streamer);
+
+    // Only show "last live" when they're NOT live right now — the LIVE
+    // badge already covers that case, and repeating it would be noise.
+    const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
+
+    // "New video" badge: YouTube-only (that's the one platform this can
+    // be checked automatically for — see updateYoutubeLiveStatuses in
+    // worker.js), and only while the video is still within the window,
+    // not just "however long ago their last upload happened to be".
+    const NEW_VIDEO_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+
+    const newVideoAgo = (() => {
+
+        if (!streamer.latest_video_published_at) {
+            return null;
+        }
+
+        const publishedMs = new Date(streamer.latest_video_published_at).getTime();
+
+        if (Date.now() - publishedMs > NEW_VIDEO_WINDOW_MS) {
+            return null;
+        }
+
+        return formatTimeAgo(streamer.latest_video_published_at);
+
+    })();
+
+    // Instagram has no API to verify this — it's a manual, self-reported
+    // toggle, so it gets its own amber badge rather than the same red
+    // one used for the platforms we actually check.
+    let liveBadgeHtml = "";
+
+    if (isAutoLive) {
+        liveBadgeHtml = `<span class="live-badge">🔴 LIVE</span>`;
+    } else if (isManualLive) {
+        liveBadgeHtml = `<span class="live-badge live-badge-manual">🟠 LIVE</span>`;
+    }
+
+    let stockBadgeHtml = "";
+
+    // stock_score is a lifetime running total now (see worker.js's
+    // /api/streamers), not a binary up/down flag — the badge just
+    // reflects which side of zero it's currently on, same visual
+    // meaning as before, but the number itself is shown too.
+    const stockScore = Number(streamer.stock_score) || 0;
+
+    if (stockScore > 0) {
+        stockBadgeHtml = `<span class="stock-badge stock-badge-up">📈 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
+    } else if (stockScore < 0) {
+        stockBadgeHtml = `<span class="stock-badge stock-badge-down">📉 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
+    }
+
+    card.innerHTML = `
+        <strong>${escapeForDisplay(streamer.name)}</strong>
+        <span class="streamer-directory-meta">${statusIcon} ${escapeForDisplay(streamer.platform || "")}</span>
+        ${stockBadgeHtml}
+        ${newVideoAgo ? `<span class="streamer-new-video">🆕 New video ${newVideoAgo}</span>` : ""}
+        ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
+        ${liveBadgeHtml}
+    `;
+
+    return card;
+
+}
+
+// Fills the "Live Now" showcase at the top of the directory. Streamers who
+// weren't in it on the previous render get a short highlight animation, so
+// someone going live while the page is open visibly appears.
+let previousLiveIds = null;
+
+function renderLiveShowcase(streamers) {
+
+    const grid = document.getElementById("liveShowcaseGrid");
+    const empty = document.getElementById("liveShowcaseEmpty");
+    const count = document.getElementById("liveShowcaseCount");
+
+    if (!grid || !empty || !count) {
+        return;
+    }
+
+    // Automatic (red) live first, then manual (amber), each keeping the
+    // directory's normal order.
+    const live = streamers
+        .map((streamer) => ({ streamer, state: getDirectoryLiveState(streamer) }))
+        .filter((entry) => entry.state.isLive)
+        .sort((a, b) => Number(b.state.isAutoLive) - Number(a.state.isAutoLive));
+
+    grid.innerHTML = "";
+
+    live.forEach(({ streamer }) => {
+
+        const card = buildDirectoryCard(streamer);
+        card.classList.add("live-showcase-card");
+
+        if (previousLiveIds !== null && !previousLiveIds.has(streamer.id)) {
+            card.classList.add("live-showcase-card-new");
+        }
+
+        grid.appendChild(card);
+
+    });
+
+    previousLiveIds = new Set(live.map((entry) => entry.streamer.id));
+
+    count.textContent = live.length > 0 ? `(${live.length})` : "";
+    empty.hidden = live.length > 0;
+    grid.hidden = live.length === 0;
+
+}
+
+function renderDirectoryGrid(streamers) {
+
+    const grid = document.getElementById("streamerGridAll");
+
+    if (!grid) {
+        return;
+    }
+
+    grid.innerHTML = "";
+
+    streamers.forEach((streamer) => {
+        grid.appendChild(buildDirectoryCard(streamer));
+    });
+
+}
+
+// Everything on a card that can change while the page is open. If none of it
+// changed between checks, the page isn't touched at all.
+function directorySignature(streamers) {
+
+    return JSON.stringify(streamers.map((s) => [
+        s.id, s.status, s.youtube_live_video_id, s.kick_is_live, s.instagram_is_live,
+        s.stock_score, s.latest_video_published_at, s.last_live_at
+    ]));
+
+}
+
+let directoryPollTimer = null;
+
+function startDirectoryLivePolling(initialStreamers) {
+
+    // Matches the 60-second edge cache on /api/streamers, so most of these
+    // checks never reach the database.
+    const POLL_MS = 60 * 1000;
+
+    let lastSignature = directorySignature(initialStreamers);
+    let lastCheckAt = Date.now();
+
+    async function check() {
+
+        if (document.hidden) {
+            return;
+        }
+
+        lastCheckAt = Date.now();
+
+        try {
+
+            const response = await fetch("/api/streamers");
+
+            if (!response.ok) {
+                return;
+            }
+
+            const streamers = await response.json();
+
+            if (!Array.isArray(streamers)) {
+                return;
+            }
+
+            const signature = directorySignature(streamers);
+
+            if (signature === lastSignature) {
+                return;
+            }
+
+            lastSignature = signature;
+            renderLiveShowcase(streamers);
+            renderDirectoryGrid(streamers);
+
+        } catch (err) {
+            // Network blip — keep what's on screen and try again next time.
+        }
+
+    }
+
+    if (directoryPollTimer) {
+        clearInterval(directoryPollTimer);
+    }
+
+    directoryPollTimer = setInterval(check, POLL_MS);
+
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && Date.now() - lastCheckAt > POLL_MS) {
+            check();
+        }
+    });
+
+}
+
 async function renderStreamerDirectory(container) {
 
     const streamers = await fetchStreamersOnce();
@@ -2053,92 +2279,34 @@ async function renderStreamerDirectory(container) {
         return;
     }
 
+    // "Live Now" showcase: whoever is live right now, kept at the top so
+    // nobody has to scroll the whole list to find them.
+    container.insertAdjacentHTML(
+        "beforeend",
+        `
+        <section class="live-showcase" aria-label="Streamers live now">
+            <h2 class="live-showcase-title">
+                <span class="live-showcase-dot" aria-hidden="true"></span>
+                Live Now <span class="live-showcase-count" id="liveShowcaseCount"></span>
+            </h2>
+            <div class="streamer-grid live-showcase-grid" id="liveShowcaseGrid" aria-live="polite"></div>
+            <p class="live-showcase-empty" id="liveShowcaseEmpty" hidden>Nobody is live right now. Check back soon!</p>
+        </section>
+        <hr class="live-showcase-divider">
+        <h2 class="live-showcase-all-title">All Streamers</h2>
+        `
+    );
+
     const grid = document.createElement("div");
     grid.className = "streamer-grid";
-
-    streamers.forEach((streamer) => {
-
-        const card = document.createElement("a");
-        card.className = "streamer-directory-card";
-        card.href = `/streamer/${streamer.slug}`;
-
-        const statusIcon = streamer.status === "online" ? "🟢"
-            : streamer.status === "away" ? "🟡"
-            : "⚫";
-
-        // Real "currently broadcasting" state (checked server-side every 5 min),
-        // separate from the manual online/away/offline status above.
-        const isAutoLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
-
-        // Instagram has no API to verify this — it's a manual, self-reported
-        // toggle, so it gets its own amber badge rather than the same red
-        // one used for the platforms we actually check.
-        const isManualLive = Number(streamer.instagram_is_live) === 1;
-
-        const isLive = isAutoLive || isManualLive;
-
-        // Only show "last live" when they're NOT live right now — the LIVE
-        // badge already covers that case, and repeating it would be noise.
-        const lastLiveAgo = !isLive ? formatTimeAgo(streamer.last_live_at) : null;
-
-        // "New video" badge: YouTube-only (that's the one platform this can
-        // be checked automatically for — see updateYoutubeLiveStatuses in
-        // worker.js), and only while the video is still within the window,
-        // not just "however long ago their last upload happened to be".
-        const NEW_VIDEO_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
-
-        const newVideoAgo = (() => {
-
-            if (!streamer.latest_video_published_at) {
-                return null;
-            }
-
-            const publishedMs = new Date(streamer.latest_video_published_at).getTime();
-
-            if (Date.now() - publishedMs > NEW_VIDEO_WINDOW_MS) {
-                return null;
-            }
-
-            return formatTimeAgo(streamer.latest_video_published_at);
-
-        })();
-
-        let liveBadgeHtml = "";
-
-        if (isAutoLive) {
-            liveBadgeHtml = `<span class="live-badge">🔴 LIVE</span>`;
-        } else if (isManualLive) {
-            liveBadgeHtml = `<span class="live-badge live-badge-manual">🟠 LIVE</span>`;
-        }
-
-        let stockBadgeHtml = "";
-
-        // stock_score is a lifetime running total now (see worker.js's
-        // /api/streamers), not a binary up/down flag — the badge just
-        // reflects which side of zero it's currently on, same visual
-        // meaning as before, but the number itself is shown too.
-        const stockScore = Number(streamer.stock_score) || 0;
-
-        if (stockScore > 0) {
-            stockBadgeHtml = `<span class="stock-badge stock-badge-up">📈 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
-        } else if (stockScore < 0) {
-            stockBadgeHtml = `<span class="stock-badge stock-badge-down">📉 ${escapeForDisplay(formatStockValue(stockScore))}</span>`;
-        }
-
-        card.innerHTML = `
-            <strong>${escapeForDisplay(streamer.name)}</strong>
-            <span class="streamer-directory-meta">${statusIcon} ${escapeForDisplay(streamer.platform || "")}</span>
-            ${stockBadgeHtml}
-            ${newVideoAgo ? `<span class="streamer-new-video">🆕 New video ${newVideoAgo}</span>` : ""}
-            ${lastLiveAgo ? `<span class="streamer-last-live">Last live ${lastLiveAgo}</span>` : ""}
-            ${liveBadgeHtml}
-        `;
-
-        grid.appendChild(card);
-
-    });
-
+    grid.id = "streamerGridAll";
     container.appendChild(grid);
+
+    previousLiveIds = null;
+    renderLiveShowcase(streamers);
+    renderDirectoryGrid(streamers);
+
+    startDirectoryLivePolling(streamers);
 
 }
 

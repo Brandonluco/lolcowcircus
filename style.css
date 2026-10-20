@@ -1819,3 +1819,73 @@ body {
 }
 
 .streamer-stock-link:hover { text-decoration: underline; }
+
+/* ==========================================================================
+   STREAMER DIRECTORY: "LIVE NOW" SHOWCASE
+   ========================================================================== */
+.live-showcase [hidden] {
+    display: none !important;
+}
+
+.live-showcase-title,
+.live-showcase-all-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.15rem;
+    color: #222;
+}
+
+.live-showcase-all-title {
+    margin-top: 6px;
+    color: #555;
+    font-size: 1rem;
+}
+
+.live-showcase-count {
+    color: #888;
+    font-weight: 600;
+}
+
+.live-showcase-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e74c3c;
+    animation: live-badge-pulse 2s ease-in-out infinite;
+}
+
+.live-showcase-empty {
+    margin: 14px 0 0;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.live-showcase-card {
+    border-color: rgba(231, 76, 60, 0.35);
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.10);
+}
+
+/* someone just went live while the page was open */
+.live-showcase-card-new {
+    animation: live-showcase-arrive 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes live-showcase-arrive {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); box-shadow: 0 0 0 6px rgba(231, 76, 60, 0.25); }
+    to   { opacity: 1; transform: none; box-shadow: 0 4px 14px rgba(231, 76, 60, 0.10); }
+}
+
+.live-showcase-divider {
+    border: 0;
+    border-top: 1px solid #e3e3e3;
+    margin: 28px 0 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-showcase-card-new,
+    .live-showcase-dot {
+        animation: none;
+    }
+}
