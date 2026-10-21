@@ -618,3 +618,66 @@ button {
     padding: 3px 8px;
     font-size: 12px;
 }
+
+
+/* ==========================
+   COLLAPSIBLE LISTS (articles + news bubbles)
+   ========================== */
+
+#articleList,
+#bubbleList {
+    max-height: 420px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.collapsible-item {
+    border-bottom: 1px solid #eee;
+}
+
+.collapsible-item > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 4px;
+    user-select: none;
+}
+
+.collapsible-item > summary::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-item > summary::before {
+    content: "▸";
+    color: #666;
+    transition: transform 0.15s ease;
+}
+
+.collapsible-item[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.collapsible-item > summary:hover {
+    background: #f8f8f8;
+}
+
+.collapsible-title {
+    flex: 1;
+    min-width: 0;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.collapsible-meta {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.collapsible-item > .admin-article-card {
+    margin: 4px 0 12px;
+}

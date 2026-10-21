@@ -755,7 +755,36 @@ div.classList.add("admin-article-card");
     ${article.slug ? `<button onclick="window.open('/article/${article.slug}', '_blank')">View</button>` : ""}
 `;
 
-        articleList.appendChild(div);
+        // The title now lives in the collapsed row, so drop the duplicate
+        // inside the card. Edit / Delete / View buttons are untouched.
+        const bodyTitle = div.querySelector("strong");
+
+        if (bodyTitle) {
+            bodyTitle.remove();
+        }
+
+        const details = document.createElement("details");
+        details.className = "collapsible-item";
+
+        const summary = document.createElement("summary");
+
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "collapsible-title";
+        titleSpan.textContent = article.title || "(untitled)";
+        summary.appendChild(titleSpan);
+
+        const metaText = [article.streamerName, article.date].filter(Boolean).join(" · ");
+
+        if (metaText) {
+            const metaSpan = document.createElement("span");
+            metaSpan.className = "collapsible-meta";
+            metaSpan.textContent = metaText;
+            summary.appendChild(metaSpan);
+        }
+
+        details.append(summary, div);
+
+        articleList.appendChild(details);
 
     });
 
@@ -1335,12 +1364,22 @@ async function loadBubbles() {
             return;
         }
 
+        const bubbleIcons = {
+            info: "💬", stock: "📈", streak: "🔥", video: "🎬",
+            streamer: "⭐", milestone: "🏆", cow: "🐄"
+        };
+
         bubbleList.innerHTML = bubbles.slice().reverse().map(bubble => `
-            <div class="admin-article-card">
-                <strong>${escapeForDisplay(bubble.type)}</strong>
-                <p>${escapeForDisplay(bubble.message)}</p>
-                <button onclick="deleteBubble(${Number(bubble.id)})">Remove</button>
-            </div>
+            <details class="collapsible-item">
+                <summary>
+                    <span class="collapsible-title">${bubbleIcons[bubble.type] || "💬"} ${escapeForDisplay(bubble.message)}</span>
+                    <span class="collapsible-meta">${escapeForDisplay(bubble.type)}</span>
+                </summary>
+                <div class="admin-article-card">
+                    <p>${escapeForDisplay(bubble.message)}</p>
+                    <button onclick="deleteBubble(${Number(bubble.id)})">Remove</button>
+                </div>
+            </details>
         `).join("");
 
     } catch (err) {
@@ -1461,3 +1500,29 @@ displayArticleComments();
 displayBannedIps();
 loadBubbles();
 loadInstagramPosts();
+
+
+// ---------- Collapsible lists (articles + news bubbles) ----------
+// Only one item open at a time within each list, so the page never grows
+// past a single expanded card. "toggle" doesn't bubble, so listen in the
+// capture phase on each list container.
+
+[articleList, bubbleList].forEach((list) => {
+
+    list.addEventListener("toggle", function (event) {
+
+        const opened = event.target;
+
+        if (!opened.matches || !opened.matches("details.collapsible-item") || !opened.open) {
+            return;
+        }
+
+        list.querySelectorAll("details.collapsible-item[open]").forEach((other) => {
+            if (other !== opened) {
+                other.open = false;
+            }
+        });
+
+    }, true);
+
+});
