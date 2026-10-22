@@ -968,7 +968,8 @@ const CACHEABLE_GET_SECONDS = new Map([
   ["/api/articles", 60],
   ["/api/status-bubbles", 60],
   ["/api/status-bubbles/history", 120],
-  ["/api/instagram-feed", 120]
+  ["/api/instagram-feed", 120],
+  ["/api/x-feed", 120]
 ]);
 
 // Instagram strip (the horizontal scroller on the homepage sidebar). Posts
@@ -1087,6 +1088,15 @@ const STATUS_BUBBLE_HISTORY_MS = 72 * 60 * 60 * 1000;  // the history page keeps
 const STATUS_BUBBLE_HISTORY_LIMIT = 200;               // most the history GET returns
 const STATUS_BUBBLE_DUPLICATE_WINDOW_MS = 6 * 60 * 60 * 1000;
 const STATUS_BUBBLE_MAX_LENGTH = 240;
+
+// X posts banner: recent posts from streamers' X accounts, pushed in by the
+// admin agent (nothing here talks to X). Text only — each item links back to
+// the original post.
+const X_POST_PUBLIC_LIMIT = 40;                          // most the public GET returns
+const X_POST_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;     // older rows are deleted
+const X_POST_MAX_ROWS = 150;
+const X_POST_MAX_TEXT = 500;
+const X_POST_HOSTS = ["x.com", "twitter.com"];
 
 export default {
 
@@ -1445,6 +1455,149 @@ export default {
         }
 
         await env.DB.prepare("DELETE FROM instagram_posts WHERE post_id = ?").bind(postId).run();
+
+        return Response.json({ success: true });
+
+      }
+
+      return Response.json({ error: "method_not_allowed" }, {
+        status: 405,
+        headers: { Allow: "POST, DELETE" }
+      });
+
+    }
+
+    // =====================
+    // X POSTS BANNER
+    // =====================
+    // Public: GET /api/x-feed -> stored posts, newest first. The page decides
+    // how old is too old. Edge-cached 2 minutes. Empty list (not an error) if
+    // the x_posts table hasn't been created yet.
+    if (url.pathname === "/api/x-feed" && request.method === "GET") {
+
+      try {
+
+        const { results } = await env.DB
+          .prepare(
+            `SELECT post_id, streamer_name, text, permalink, posted_at
+             FROM x_posts ORDER BY posted_at DESC LIMIT ?`
+          )
+          .bind(X_POST_PUBLIC_LIMIT)
+          .all();
+
+        return Response.json(results);
+
+      } catch (err) {
+
+        console.log("x-feed read failed:", err.message);
+        return Response.json([]);
+
+      }
+
+    }
+
+    // Admin/service-token only. POST {streamer_name, post_id, text,
+    // permalink, posted_at} adds a post (a repeat post_id is ignored, so a
+    // retried job can't create duplicates). DELETE ?post_id=... removes one.
+    // This exact path needs to be inside the Cloudflare Access app.
+    if (url.pathname === "/api/admin/x-posts") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method === "POST") {
+
+        let data;
+
+        try {
+          data = await request.json();
+        } catch (err) {
+          return Response.json({ error: "invalid_json" }, { status: 400 });
+        }
+
+        data = data || {};
+
+        const clean = (value, max) => typeof value === "string"
+          ? value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max)
+          : "";
+
+        const streamerName = clean(data.streamer_name, 80);
+        const text = clean(data.text, X_POST_MAX_TEXT);
+        const postId = typeof data.post_id === "string"
+          ? data.post_id.trim()
+          : (typeof data.post_id === "number" ? String(data.post_id) : "");
+
+        if (!streamerName) {
+          return Response.json({ error: "invalid_streamer_name" }, { status: 400 });
+        }
+
+        if (!text) {
+          return Response.json({ error: "invalid_text" }, { status: 400 });
+        }
+
+        if (!/^[0-9]{1,25}$/.test(postId)) {
+          return Response.json({ error: "invalid_post_id", detail: "The numeric post ID from the post's URL." }, { status: 400 });
+        }
+
+        let permalink = null;
+
+        try {
+          const parsedLink = new URL(data.permalink);
+          if (parsedLink.protocol === "https:" && hostMatchesSuffix(parsedLink.hostname, X_POST_HOSTS)) {
+            permalink = parsedLink.href;
+          }
+        } catch (err) { /* handled below */ }
+
+        if (!permalink) {
+          return Response.json({ error: "invalid_permalink", detail: "Must be an https x.com or twitter.com link." }, { status: 400 });
+        }
+
+        const postedAt = parseInstagramPostedAt(data.posted_at);
+
+        if (postedAt === null) {
+          return Response.json({ error: "invalid_posted_at" }, { status: 400 });
+        }
+
+        const existing = await env.DB
+          .prepare("SELECT id FROM x_posts WHERE post_id = ?")
+          .bind(postId)
+          .first();
+
+        if (existing) {
+          return Response.json({ success: true, duplicate: true });
+        }
+
+        await env.DB
+          .prepare(
+            `INSERT INTO x_posts (post_id, streamer_name, text, permalink, posted_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          )
+          .bind(postId, streamerName, text, permalink, postedAt, Date.now())
+          .run();
+
+        // Keep the table small: drop expired rows and anything past the newest N.
+        await env.DB
+          .prepare(
+            `DELETE FROM x_posts
+             WHERE posted_at < ?
+                OR id NOT IN (SELECT id FROM x_posts ORDER BY posted_at DESC LIMIT ?)`
+          )
+          .bind(Date.now() - X_POST_RETENTION_MS, X_POST_MAX_ROWS)
+          .run();
+
+        return Response.json({ success: true }, { status: 201 });
+
+      }
+
+      if (request.method === "DELETE") {
+
+        const postId = url.searchParams.get("post_id") || "";
+
+        if (!/^[0-9]{1,25}$/.test(postId)) {
+          return Response.json({ error: "invalid_post_id" }, { status: 400 });
+        }
+
+        await env.DB.prepare("DELETE FROM x_posts WHERE post_id = ?").bind(postId).run();
 
         return Response.json({ success: true });
 

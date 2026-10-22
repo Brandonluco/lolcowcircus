@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="slot-machine.css">
     <link rel="stylesheet" href="status-bubbles.css">
     <link rel="stylesheet" href="instagram-strip.css">
+    <link rel="stylesheet" href="x-banner.css">
     <link rel="icon" type="image/png" href="/Images/Favicon/faviconnew.png">
 </head>
 <body>
@@ -49,6 +50,25 @@
 </nav>
 <div class="status-banner">
     <div class="status-track" id="statusTrack"></div>
+</div>
+<!-- X posts banner: black strip under the streamer banner. Filled in by
+     x-banner.js from /api/x-feed; stays hidden until there's a recent post.
+     LOGO: the inline <svg> below is an original mark. To use your own image
+     instead, delete the whole <svg>...</svg> and put this in its place:
+         <img class="x-banner-logo" src="Images/x-logo.png" alt="X">
+     (change the path to wherever you upload it; it's sized by .x-banner-logo
+     in x-banner.css). -->
+<div class="x-banner hidden" id="xBanner" aria-label="Recent posts from streamers on X">
+    <span class="x-banner-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5"></rect>
+            <path d="M8 8l8 8M16 8l-8 8"></path>
+        </svg>
+        <span class="x-banner-badge-label">Posts</span>
+    </span>
+    <div class="x-banner-viewport">
+        <div class="x-banner-track" id="xTrack"></div>
+    </div>
 </div>
 <div id="alertBox" class="hidden"></div>
 
@@ -366,6 +386,7 @@
 <script src="slot-machine.js"></script>
 <script src="status-bubbles.js"></script>
 <script src="instagram-strip.js"></script>
+<script src="x-banner.js"></script>
 
 </body>
 </html>
