@@ -13,7 +13,6 @@
     // This version is time-based, so it stays 60 on faster screens too.
     const SPEED_PX_PER_SEC = 60;
 
-    const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;   // only posts from the last 3 days
     const MAX_ITEMS = 30;
     const MAX_TEXT_CHARS = 140;                   // longer posts are cut with "…"
     const REFRESH_MS = 5 * 60 * 1000;             // re-check the feed every 5 minutes
@@ -48,7 +47,10 @@
         const hours = Math.round(minutes / 60);
         if (hours < 24) return hours + "h";
 
-        return Math.round(hours / 24) + "d";
+        const days = Math.round(hours / 24);
+        if (days < 30) return days + "d";
+
+        return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
     }
 
@@ -248,14 +250,14 @@
             }
 
             const data = await response.json();
-            const cutoff = Date.now() - MAX_AGE_MS;
-
+            // No age filter: posts show until they're deleted. The banner only
+            // hides itself when there are no posts at all (an empty black bar
+            // would look broken).
             posts = (Array.isArray(data) ? data : [])
                 .filter((p) => p
                     && typeof p.text === "string"
                     && typeof p.streamer_name === "string"
-                    && typeof p.permalink === "string"
-                    && Number(p.posted_at) >= cutoff)
+                    && typeof p.permalink === "string")
                 .slice(0, MAX_ITEMS);
 
             render();
