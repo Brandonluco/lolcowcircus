@@ -1,0 +1,95 @@
+/* ==========================================================================
+   BANNER SCREEN GLOW (desktop only)
+   A dim bluish halo on each clickable banner "screen" so visitors can tell
+   the screens are buttons, and a brighter glow that follows the mouse on
+   hover. Coordinate-free: it only uses the box of the existing
+   .screen-button links. No SVG outlines, no banner edits.
+
+   - The glow lives on the links' ::before (resting halo) and ::after
+     (hover glow), so when the header collapses and the links go to
+     opacity: 0 / pointer-events: none, the glow goes with them.
+   - Both layers are absolutely positioned and pointer-events: none: they
+     can't shift anything or block a click.
+   - Hover-capable devices only (phones/tablets keep the mobile tabs).
+
+   To tune it, change the variables just below.
+   ========================================================================== */
+@media (hover: hover) and (pointer: fine) {
+
+    .screen-button {
+        --glow-rgb: 170, 210, 255;        /* resting halo colour (soft blue) */
+        --glow-hover-rgb: 205, 232, 255;  /* hover glow colour (brighter) */
+        --glow-idle: 0.24;                /* resting halo strength, 0 to 1 */
+        --glow-hover: 0.65;               /* hover glow strength, 0 to 1 */
+        --glow-feather: 24%;              /* how far in from the edges the glow fades out */
+    }
+
+    .screen-button::before,
+    .screen-button::after {
+        content: "";
+        position: absolute;
+        inset: -6%;
+        border-radius: 14px;
+        pointer-events: none;
+        mix-blend-mode: screen;
+    }
+
+    /* resting halo: light spilling from a monitor, always on, quiet */
+    .screen-button::before {
+        background: radial-gradient(
+            closest-side,
+            rgba(var(--glow-rgb), var(--glow-idle)),
+            rgba(var(--glow-rgb), 0) 72%
+        );
+        opacity: 1;
+        transition: opacity 0.25s ease;
+    }
+
+    /* hover glow: follows the cursor via --mx / --my (set in screen-glow.js).
+       It stays inside the screen's box, and the box's edges are feathered
+       with a mask, so the glow fades out toward the sides and corners
+       instead of ending in a visible straight cut. */
+    .screen-button::after {
+        inset: 0;
+        border-radius: 0;
+        background: radial-gradient(
+            ellipse 75% 75% at var(--mx, 50%) var(--my, 50%),
+            rgba(var(--glow-hover-rgb), var(--glow-hover)) 0%,
+            rgba(var(--glow-hover-rgb), calc(var(--glow-hover) * 0.62)) 28%,
+            rgba(var(--glow-hover-rgb), calc(var(--glow-hover) * 0.28)) 55%,
+            rgba(var(--glow-hover-rgb), calc(var(--glow-hover) * 0.08)) 80%,
+            rgba(var(--glow-hover-rgb), 0) 100%
+        );
+        -webkit-mask-image:
+            linear-gradient(to right, transparent 0%, #000 var(--glow-feather, 24%), #000 calc(100% - var(--glow-feather, 24%)), transparent 100%),
+            linear-gradient(to bottom, transparent 0%, #000 var(--glow-feather, 24%), #000 calc(100% - var(--glow-feather, 24%)), transparent 100%);
+        -webkit-mask-composite: source-in;
+        mask-image:
+            linear-gradient(to right, transparent 0%, #000 var(--glow-feather, 24%), #000 calc(100% - var(--glow-feather, 24%)), transparent 100%),
+            linear-gradient(to bottom, transparent 0%, #000 var(--glow-feather, 24%), #000 calc(100% - var(--glow-feather, 24%)), transparent 100%);
+        mask-composite: intersect;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .screen-button:hover::before,
+    .screen-button:focus-visible::before {
+        opacity: 0.55;                    /* the blob takes over from the halo */
+    }
+
+    .screen-button:hover::after,
+    .screen-button:focus-visible::after {
+        opacity: 1;
+    }
+
+    .screen-button:focus-visible {
+        outline: none;                    /* the glow is the focus indicator */
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .screen-button::before,
+    .screen-button::after {
+        transition: none;
+    }
+}
