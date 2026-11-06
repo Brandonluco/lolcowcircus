@@ -176,15 +176,8 @@ async function sendMessage() {
 
   if (response.ok) {
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(commentData));
-    } else {
-        // The REST POST above already saved the comment, so it's not
-        // lost — it'll just show up on refresh instead of live, same as
-        // it would for anyone else connected right now while this
-        // person's socket happens to be reconnecting in the background.
-        console.log("Chat socket not open — comment saved but not broadcast live");
-    }
+    // The Worker now broadcasts the validated, saved message. Clients never
+    // send directly into WebSockets, including when reconnecting.
 
     messageInput.value = "";
 
@@ -202,6 +195,23 @@ async function sendMessage() {
 }
 
    
+// Build the chat message as DOM nodes, never interpolating visitor data
+// into HTML attributes. This protects both history and live messages.
+function renderChatMessage(comment) {
+    const message = document.createElement("div");
+    message.classList.add("message");
+    const name = document.createElement("strong");
+    name.style.color = /^#[0-9a-fA-F]{6}$/.test(comment.color) ? comment.color : "#8B5A2B";
+    name.textContent = String(comment.username || "") + ":";
+    message.appendChild(name);
+    message.appendChild(document.createTextNode(" " + String(comment.message || "")));
+    const timestamp = document.createElement("span");
+    timestamp.className = "timestamp";
+    timestamp.textContent = String(comment.created_at || "");
+    message.appendChild(timestamp);
+    return message;
+}
+
 async function loadMessages() {
 
     const response = await fetch("/api/comments");
@@ -211,23 +221,7 @@ async function loadMessages() {
     chatMessages.innerHTML = "";
 
     comments.forEach((comment) => {
-
-        const message = document.createElement("div");
-
-        message.classList.add("message");
-
-        message.innerHTML = `
-            <strong style="color:${comment.color}">
-                ${escapeForDisplay(comment.username)}:
-            </strong>
-            ${escapeForDisplay(comment.message)}
-            <span class="timestamp">
-                ${escapeForDisplay(comment.created_at)}
-            </span>
-        `;
-
-        chatMessages.appendChild(message);
-
+        chatMessages.appendChild(renderChatMessage(comment));
     });
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -270,19 +264,8 @@ function connectChatSocket() {
             return;
         }
 
-        const message = document.createElement("div");
-
-        message.classList.add("message");
-
-        message.innerHTML = `
-            <strong style="color:${comment.color}">
-                ${escapeForDisplay(comment.username)}:
-            </strong>
-            ${escapeForDisplay(comment.message)}
-            <span class="timestamp">
-                ${escapeForDisplay(comment.created_at)}
-            </span>
-        `;
+        if (comment.type !== "message") return;
+        const message = renderChatMessage(comment);
 
         const isAtBottom =
             chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
