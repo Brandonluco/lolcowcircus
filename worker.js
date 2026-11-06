@@ -2809,7 +2809,54 @@ export default {
 
         }
 
-        const data = await request.json();
+        // Validate article comments on the server, not just via the
+        // textarea's maxlength attribute (which direct API calls bypass).
+        // Reject oversized inputs rather than silently truncating them.
+        const contentLength = Number(request.headers.get("Content-Length") || 0);
+        if (contentLength > 4096) {
+          return Response.json({ error: "comment_payload_too_large" }, { status: 413 });
+        }
+
+        let data;
+        try {
+          const raw = await request.text();
+          if (raw.length > 4096) {
+            return Response.json({ error: "comment_payload_too_large" }, { status: 413 });
+          }
+          data = JSON.parse(raw);
+        } catch {
+          return Response.json({ error: "invalid_json" }, { status: 400 });
+        }
+
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+          return Response.json({ error: "invalid_comment" }, { status: 400 });
+        }
+
+        const articleId = Number(data.article_id);
+        const parentId = data.parent_id == null ? null : Number(data.parent_id);
+        const username = data.username;
+        const message = data.message;
+        const createdAt = data.created_at;
+
+        if (!Number.isSafeInteger(articleId) || articleId <= 0 ||
+            (parentId !== null && (!Number.isSafeInteger(parentId) || parentId <= 0)) ||
+            typeof username !== "string" || username.trim().length === 0 ||
+            username.length > 20 ||
+            typeof message !== "string" || message.trim().length === 0 ||
+            message.length > 500 ||
+            typeof createdAt !== "string" || createdAt.length > 80) {
+          return Response.json({ error: "invalid_comment_fields" }, { status: 400 });
+        }
+
+        // Replies must reference a comment belonging to the same article.
+        if (parentId !== null) {
+          const parent = await env.DB.prepare(
+            "SELECT id FROM article_comments WHERE id = ? AND article_id = ?"
+          ).bind(parentId, articleId).first();
+          if (!parent) {
+            return Response.json({ error: "invalid_parent_comment" }, { status: 400 });
+          }
+        }
 
         await env.DB
           .prepare(
@@ -2820,13 +2867,13 @@ export default {
             `
           )
           .bind(
-            data.article_id,
-            data.username,
-            data.message,
+            articleId,
+            username,
+            message.trim(),
             sanitizeColor(data.color),
-            data.created_at,
+            createdAt,
             ip,
-            data.parent_id ?? null
+            parentId
           )
           .run();
 
