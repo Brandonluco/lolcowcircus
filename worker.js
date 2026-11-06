@@ -35,31 +35,50 @@ export class ChatRoom {
     const upgradeHeader = request.headers.get("Upgrade");
 
     if (upgradeHeader !== "websocket") {
-
-      // Internal-only call from the worker's /api/comments/clear admin
-      // endpoint below — Durable Object stubs aren't reachable from the
-      // public internet, only from within this Worker, so this can't be
-      // hit directly by a visitor. Tells everyone currently connected to
-      // clear their chat view live, instead of only wiping it for people
-      // on their next page load.
-      if (request.method === "POST") {
-
-        for (const session of this.sessions) {
-          try {
-            session.send(JSON.stringify({ type: "clear" }));
-          } catch (err) {
-            console.log("Dropping dead session while broadcasting clear:", err);
-            this.sessions.delete(session);
-          }
-        }
-
-        return new Response(null, { status: 204 });
-
+      // Only the Worker can call this Durable Object stub directly.
+      // Browsers can open /api/chat WebSockets but cannot invoke these internal routes.
+      const path = new URL(request.url).pathname;
+      if (request.method !== "POST" || (path !== "/clear" && path !== "/broadcast")) {
+        return new Response("Expected websocket", { status: 400 });
       }
 
-      return new Response("Expected websocket", {
-        status: 400
-      });
+      let message;
+      if (path === "/clear") {
+        message = JSON.stringify({ type: "clear" });
+      } else {
+        let comment;
+        try {
+          comment = await request.json();
+        } catch {
+          return new Response("Invalid broadcast", { status: 400 });
+        }
+        if (!comment || typeof comment !== "object" ||
+            typeof comment.username !== "string" || typeof comment.message !== "string" ||
+            typeof comment.created_at !== "string" || typeof comment.color !== "string" ||
+            !/^#[0-9a-fA-F]{6}$/.test(comment.color) ||
+            comment.username.length > 20 || comment.message.length > 500 ||
+            comment.created_at.length > 80) {
+          return new Response("Invalid broadcast", { status: 400 });
+        }
+        // Do not accept a caller-supplied message type. Only this server can
+        // generate control events like "clear".
+        message = JSON.stringify({
+          type: "message",
+          username: comment.username,
+          message: comment.message,
+          color: comment.color,
+          created_at: comment.created_at
+        });
+      }
+
+      for (const session of this.sessions) {
+        try {
+          session.send(message);
+        } catch {
+          try { session.close(1011, "Connection lost"); } catch {}
+        }
+      }
+      return new Response(null, { status: 204 });
     }
 
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -130,41 +149,11 @@ export class ChatRoom {
   releaseSession(server);
 });
 
-server.addEventListener("message", (event) => {
-
-    const now = Date.now();
-    const last = this.lastMessageAt.get(ip) || 0;
-
-    // Same 3s window as the /api/comments cooldown, so this can't be used
-    // as a side door around it.
-    if (now - last < 3000) {
-      console.log("Dropped chat message from", ip, "- rate limited");
-      return;
-    }
-
-    this.lastMessageAt.set(ip, now);
-
-    console.log("Broadcasting:", event.data);
-
-  // A socket can be in a half-dead state (e.g. the client vanished but the
-  // "close" event for it hasn't fired yet) at the exact moment we try to
-  // broadcast to it. send() throwing on one stale session used to bubble
-  // all the way up out of this handler uncaught — which is very likely
-  // what's shown up in your logs as the Durable Object being reset. Now a
-  // single bad socket just gets cleaned up and skipped instead of taking
-  // the whole broadcast down.
-  for (const session of this.sessions) {
-
-    try {
-      session.send(event.data);
-    } catch (err) {
-      console.log("Dropping dead session during broadcast:", err);
-      releaseSession(session);
-    }
-
-  }
-
-});
+    // Public sockets are receive-only. All messages must pass the REST API's
+    // ban check, rate limit, validation and database insert before broadcast.
+    server.addEventListener("message", () => {
+      server.close(1008, "Send messages through the chat API");
+    });
 
     return new Response(null, {
       status: 101,
@@ -1262,6 +1251,8 @@ export default {
         // enforced again here before anything touches the database.
         const username = String(data.username || "").slice(0, 20);
         const message = String(data.message || "").trim().slice(0, 500);
+        const color = sanitizeColor(data.color);
+        const createdAt = String(data.created_at || "").slice(0, 80);
 
         if (!message) {
           return Response.json(
@@ -1281,11 +1272,25 @@ export default {
           .bind(
             username,
             message,
-            sanitizeColor(data.color),
-            data.created_at
+            color,
+            createdAt
           )
           .run();
 
+        // Broadcast only messages that passed validation and were saved.
+        // A temporary WebSocket failure must not turn a successful database
+        // write into a failed POST (which could cause duplicate retries).
+        try {
+          const room = env.CHAT_ROOM.get(env.CHAT_ROOM.idFromName("main"));
+          const sent = await room.fetch("https://internal/broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, message, color, created_at: createdAt })
+          });
+          if (!sent.ok) console.log("Chat broadcast rejected:", sent.status);
+        } catch (err) {
+          console.log("Chat broadcast failed:", err.message);
+        }
 
         return Response.json({
           success: true
