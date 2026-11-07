@@ -81,6 +81,16 @@ articleImageFile.addEventListener("change", async function () {
         return;
     }
 
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+        imageUploadStatus.textContent = "Choose a JPEG, PNG, WebP or GIF image (SVG is not supported).";
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        imageUploadStatus.textContent = "Image is too large (10 MB max).";
+        return;
+    }
+
     imageUploadStatus.textContent = "Uploading...";
 
     // Read the file's real pixel dimensions in the browser before it's even
@@ -103,7 +113,7 @@ articleImageFile.addEventListener("change", async function () {
     articleImageWidth.value = dimensions.width || "";
     articleImageHeight.value = dimensions.height || "";
 
-    const response = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
+    const response = await fetch("/api/upload-image", {
         method: "POST",
         headers: {
             "Content-Type": file.type || "application/octet-stream"
