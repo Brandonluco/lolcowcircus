@@ -5,6 +5,7 @@
 // requireAdmin() check the rest of your admin endpoints use). Routes:
 //
 //   GET  /api/slots/admin/overview       everything the admin panel shows
+//   GET  /api/slots/admin/wins           read-only paginated wins feed (agent)
 //   POST /api/slots/admin/face-image     upload a streamer's symbol image
 //   POST /api/slots/admin/face           turn a streamer on/off the reels, opt-out
 //   POST /api/slots/admin/prize          create or edit a prize symbol
@@ -403,6 +404,70 @@ async function handleOverview(env) {
       player: r.player_name || null
     })),
     leaderboard: playersRes.results.map((p) => ({ name: p.display_name, jackpots: p.jackpots }))
+  });
+
+}
+
+// ---------------------------------------------------------------------
+// GET /api/slots/admin/wins — read-only feed for the status-bubble agent
+// ---------------------------------------------------------------------
+// Poll with ?after_id=<last processed win ID>. Rows are ascending, so a
+// missed polling interval never loses an event. ?bootstrap=1 returns only
+// the current highest ID to let an agent start without reposting old wins.
+// No IP hashes or internal player identifiers are exposed.
+async function handleWinsFeed(env, url) {
+
+  const afterRaw = url.searchParams.get("after_id");
+  const limitRaw = url.searchParams.get("limit");
+  const bootstrap = url.searchParams.get("bootstrap");
+
+  if (bootstrap !== null && bootstrap !== "1") {
+    return json({ error: "invalid_bootstrap", message: "bootstrap must be 1." }, 400);
+  }
+
+  if (afterRaw !== null && (!/^\\d+$/.test(afterRaw) ||
+      !Number.isSafeInteger(Number(afterRaw)))) {
+    return json({ error: "invalid_after_id", message: "after_id must be a non-negative integer." }, 400);
+  }
+
+  if (limitRaw !== null && (!/^\\d+$/.test(limitRaw) ||
+      !Number.isSafeInteger(Number(limitRaw)) ||
+      Number(limitRaw) < 1 || Number(limitRaw) > 100)) {
+    return json({ error: "invalid_limit", message: "limit must be between 1 and 100." }, 400);
+  }
+
+  if (bootstrap === "1") {
+    const latest = await env.DB.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM slot_wins").first();
+    return json({ wins: [], nextAfterId: Number(latest?.id) || 0, hasMore: false });
+  }
+
+  const afterId = afterRaw === null ? 0 : Number(afterRaw);
+  const limit = limitRaw === null ? 50 : Number(limitRaw);
+
+  const { results } = await env.DB.prepare(`
+    SELECT w.id AS id, w.created_at AS at, w.kind AS kind, w.points AS points,
+           s.name AS streamer, p.name AS prize
+    FROM slot_wins w
+    LEFT JOIN streamers s ON s.id = w.streamer_id
+    LEFT JOIN slot_prizes p ON p.id = w.prize_id
+    WHERE w.id > ?
+    ORDER BY w.id ASC
+    LIMIT ?
+  `).bind(afterId, limit + 1).all();
+
+  const hasMore = results.length > limit;
+  const rows = results.slice(0, limit);
+  return json({
+    wins: rows.map((row) => ({
+      id: row.id,
+      at: row.at,
+      kind: row.kind,
+      points: Number(row.points),
+      streamer: row.streamer || null,
+      prize: row.prize || null
+    })),
+    nextAfterId: rows.length ? rows[rows.length - 1].id : afterId,
+    hasMore
   });
 
 }
@@ -830,6 +895,10 @@ export async function handleSlotAdminRoutes(request, env, url, helpers, hooks) {
 
     if (path === "/api/slots/admin/overview" && method === "GET") {
       return await handleOverview(env);
+    }
+
+    if (path === "/api/slots/admin/wins" && method === "GET") {
+      return await handleWinsFeed(env, url);
     }
 
     if (path === "/api/slots/admin/face-image" && method === "POST") {
