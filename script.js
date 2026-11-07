@@ -1656,19 +1656,20 @@ function renderCommentSkeletons(list, count) {
 // embeddable — Instagram's live flag is self-reported with no video source
 // to actually show, so it's never eligible to be featured here even while
 // marked live.
-function isEmbeddableLive(streamer) {
+// A secondary Kick account is opt-in via kick_channel. Keep the primary
+// "channel" fallback for existing Kick-primary streamers.
+function getKickLiveUsername(streamer) {
 
     const platform = (streamer.platform || "").toLowerCase();
+    return streamer.kick_channel ||
+        (platform.includes("kick") ? streamer.channel : "") || "";
 
-    if (platform.includes("kick") && Number(streamer.kick_is_live) === 1) {
-        return true;
-    }
+}
 
-    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
-        return true;
-    }
+function isEmbeddableLive(streamer) {
 
-    return false;
+    return (Number(streamer.kick_is_live) === 1 && Boolean(getKickLiveUsername(streamer))) ||
+        (Boolean(streamer.embed_channel_id) && Boolean(streamer.youtube_live_video_id));
 
 }
 
@@ -1723,11 +1724,11 @@ async function loadFeaturedStreamer() {
 // Muted autoplay is the only kind browsers reliably allow.
 function renderFeaturedStreamerEmbed(streamer) {
 
-    const platform = (streamer.platform || "").toLowerCase();
+    const kickUsername = getKickLiveUsername(streamer);
 
-    if (platform.includes("kick")) {
-
-        const kickUsername = streamer.kick_channel || streamer.channel;
+    // Prefer Kick if both platforms are live, otherwise embed whichever
+    // configured platform is actually live (regardless of primary platform).
+    if (kickUsername && Number(streamer.kick_is_live) === 1) {
 
         return `
             <div class="video-container">
@@ -1738,7 +1739,7 @@ function renderFeaturedStreamerEmbed(streamer) {
 
     }
 
-    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
+    if (streamer.embed_channel_id && streamer.youtube_live_video_id) {
 
         return `
             <div class="video-container">
@@ -2045,7 +2046,7 @@ function formatTimeAgo(isoString) {
 // Kick, done by the worker's cron) or the manual Instagram toggle.
 function getDirectoryLiveState(streamer) {
 
-    const isAutoLive = Boolean(streamer.youtube_live_video_id) || Number(streamer.kick_is_live) === 1;
+    const isAutoLive = isEmbeddableLive(streamer);
     const isManualLive = Number(streamer.instagram_is_live) === 1;
 
     return { isAutoLive, isManualLive, isLive: isAutoLive || isManualLive };
@@ -2349,13 +2350,14 @@ function renderStreamerWatchBlock(streamer) {
 
     const platform = (streamer.platform || "").toLowerCase();
     const profileUrl = buildStreamerProfileUrl(streamer);
+    const kickUsername = getKickLiveUsername(streamer);
+    const kickIsLive = kickUsername && Number(streamer.kick_is_live) === 1;
+    const youtubeIsLive = streamer.embed_channel_id && streamer.youtube_live_video_id;
 
     // Kick: fully reliable embed, no extra setup needed for Kick-only streamers.
     // Dual-platform streamers (e.g. "YouTube/Kick") need kick_channel set explicitly,
     // since their "channel" field usually holds their handle for the other platform.
-    if (platform.includes("kick")) {
-
-        const kickUsername = streamer.kick_channel || streamer.channel;
+    if (kickIsLive || (platform.includes("kick") && !youtubeIsLive && kickUsername)) {
 
         return `
             <div class="video-container">
@@ -2370,7 +2372,7 @@ function renderStreamerWatchBlock(streamer) {
     // real video ID is the officially-supported, reliable method — unlike the
     // old /embed/live_stream?channel= redirect, which YouTube can silently
     // break at any time since it was never a documented endpoint.
-    if (platform.includes("youtube") && streamer.youtube_live_video_id) {
+    if (youtubeIsLive) {
         return `
             <div class="video-container">
                 <iframe src="https://www.youtube.com/embed/${encodeURIComponent(streamer.youtube_live_video_id)}"
