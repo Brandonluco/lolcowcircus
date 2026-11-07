@@ -676,9 +676,8 @@ async function updateYoutubeLiveStatuses(env) {
       `
       SELECT id, embed_channel_id, youtube_live_video_id, latest_video_id, youtube_live_dismissed_video_id
       FROM streamers
-      WHERE platform LIKE '%youtube%'
-      AND embed_channel_id IS NOT NULL
-      AND embed_channel_id != ''
+      WHERE embed_channel_id IS NOT NULL
+      AND TRIM(embed_channel_id) != ''
       `
     )
     .all();
@@ -842,14 +841,16 @@ async function checkKickLive(slug, token) {
 
 }
 
-// Loops over every Kick streamer and refreshes their cached live status in D1.
+// Checks a Kick-primary streamer or any streamer with a configured Kick channel.
+// The primary platform does not determine whether a secondary channel is checked.
 async function updateKickLiveStatuses(env) {
 
   const { results } = await env.DB
     .prepare(
       `
-      SELECT id, channel, kick_channel, kick_is_live, kick_live_dismissed FROM streamers
-      WHERE platform LIKE '%kick%'
+      SELECT id, platform, channel, kick_channel, kick_is_live, kick_live_dismissed FROM streamers
+      WHERE (kick_channel IS NOT NULL AND TRIM(kick_channel) != '')
+         OR platform LIKE '%kick%'
       `
     )
     .all();
@@ -868,7 +869,10 @@ async function updateKickLiveStatuses(env) {
 
   for (const streamer of results) {
 
-    const slugRaw = streamer.kick_channel || streamer.channel || "";
+    // A secondary Kick account must be explicitly configured. The primary
+    // channel fallback is retained only for Kick-primary streamers.
+    const slugRaw = streamer.kick_channel ||
+      (String(streamer.platform || "").toLowerCase().includes("kick") ? streamer.channel : "") || "";
     const slug = slugRaw.startsWith("@") ? slugRaw.slice(1) : slugRaw;
 
     if (!slug) {
