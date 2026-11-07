@@ -8,7 +8,7 @@
     // ---- Display rules: change these to taste ------------------------------
     const MAX_AGE_DAYS = 30;          // hide posts older than this
     const MAX_PER_STREAMER = 2;      // at most this many tiles per streamer
-    const MAX_TOTAL = 12;            // and this many overall
+    const MAX_TOTAL = 3;            // and this many overall
     // -------------------------------------------------------------------------
 
     const box = document.getElementById("instagramStrip");
