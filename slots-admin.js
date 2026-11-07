@@ -425,12 +425,12 @@ async function handleWinsFeed(env, url) {
     return json({ error: "invalid_bootstrap", message: "bootstrap must be 1." }, 400);
   }
 
-  if (afterRaw !== null && (!/^\\d+$/.test(afterRaw) ||
+  if (afterRaw !== null && (!/^\d+$/.test(afterRaw) ||
       !Number.isSafeInteger(Number(afterRaw)))) {
     return json({ error: "invalid_after_id", message: "after_id must be a non-negative integer." }, 400);
   }
 
-  if (limitRaw !== null && (!/^\\d+$/.test(limitRaw) ||
+  if (limitRaw !== null && (!/^\d+$/.test(limitRaw) ||
       !Number.isSafeInteger(Number(limitRaw)) ||
       Number(limitRaw) < 1 || Number(limitRaw) > 100)) {
     return json({ error: "invalid_limit", message: "limit must be between 1 and 100." }, 400);
