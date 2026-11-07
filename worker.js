@@ -3009,27 +3009,71 @@ export default {
       const authError = await requireAdmin(request, env);
       if (authError) return authError;
 
-      const contentType = request.headers.get("Content-Type") || "";
-
-      if (!contentType.startsWith("image/")) {
-        return Response.json({ error: "must be an image" }, { status: 400 });
-      }
-
-      const contentLength = Number(request.headers.get("Content-Length") || 0);
-      const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
-
-      if (contentLength > MAX_IMAGE_BYTES) {
+      const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+      const declaredLength = request.headers.get("Content-Length");
+      if (declaredLength !== null && Number(declaredLength) > MAX_IMAGE_BYTES) {
         return Response.json({ error: "image too large (10MB max)" }, { status: 413 });
       }
 
-      const filename = url.searchParams.get("filename") || "upload";
+      // A filename, extension and Content-Type header are all client-controlled.
+      // Read the body with a hard byte ceiling, then detect a real raster format.
+      // SVG is intentionally excluded because it may contain active content.
+      if (!request.body) {
+        return Response.json({ error: "empty image" }, { status: 400 });
+      }
 
-      const key = `${Date.now()}-${filename}`;
-
-      await env.IMAGES.put(key, request.body, {
-        httpMetadata: {
-          contentType: contentType
+      const reader = request.body.getReader();
+      const chunks = [];
+      let total = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > MAX_IMAGE_BYTES) {
+            await reader.cancel();
+            return Response.json({ error: "image too large (10MB max)" }, { status: 413 });
+          }
+          chunks.push(value);
         }
+      } catch {
+        return Response.json({ error: "invalid image upload" }, { status: 400 });
+      }
+
+      if (!total) {
+        return Response.json({ error: "empty image" }, { status: 400 });
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      const ascii = (start, end) => String.fromCharCode(...bytes.subarray(start, end));
+      let format = null;
+      if (bytes.length >= 8 &&
+          [137,80,78,71,13,10,26,10].every((b, i) => bytes[i] === b)) {
+        format = { ext: "png", type: "image/png" };
+      } else if (bytes.length >= 3 &&
+                 bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+        format = { ext: "jpg", type: "image/jpeg" };
+      } else if (bytes.length >= 6 &&
+                 (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a")) {
+        format = { ext: "gif", type: "image/gif" };
+      } else if (bytes.length >= 12 &&
+                 ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") {
+        format = { ext: "webp", type: "image/webp" };
+      }
+      if (!format) {
+        return Response.json({
+          error: "Only JPEG, PNG, GIF and WebP images are supported"
+        }, { status: 400 });
+      }
+
+      // No filename from the caller enters the R2 storage key.
+      const key = `articles/${crypto.randomUUID()}.${format.ext}`;
+      await env.IMAGES.put(key, bytes, {
+        httpMetadata: { contentType: format.type }
       });
 
       return Response.json({
@@ -3052,6 +3096,11 @@ export default {
       const headers = new Headers();
 
       object.writeHttpMetadata(headers);
+      headers.set("X-Content-Type-Options", "nosniff");
+      // Restrict active content if an older SVG object already exists in R2.
+      if ((headers.get("Content-Type") || "").split(";")[0].toLowerCase() === "image/svg+xml") {
+        headers.set("Content-Security-Policy", "sandbox");
+      }
 
       headers.set("etag", object.httpEtag);
 
