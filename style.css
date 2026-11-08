@@ -46,6 +46,21 @@ body {
 }
 
 
+/* The Christmas artwork is 2048 × 682 pixels. The banner uses
+   object-fit: cover and object-position: center top, so the picture is
+   always scaled to the header WIDTH and cropped at the bottom.
+
+   Container-width units (cqw) keep screen Y positions and heights tied
+   to the *image width*, not the header height. This is important because
+   the header caps its height at 550px on wide monitors.
+   Each polygon lists TOP-LEFT, TOP-RIGHT, BOTTOM-RIGHT, BOTTOM-LEFT.
+   These hit areas follow the pictured glass, not the surrounding laptops.
+   The old rectangles and unused inline SVG polygons are deliberately gone.
+*/
+.site-header {
+    container-type: inline-size;
+}
+
 .screen-button {
     position: absolute;
     z-index: 1;
@@ -54,49 +69,44 @@ body {
     transition: opacity 0.2s ease;
 }
 
-.screen-outline {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    pointer-events: none;
-    opacity: 0;
-}
-
-.screen-outline polygon {
-    display: none;
-}
-
-
+/* Home / cowtube.org: image pixels (650,231) (825,219)
+   (835,418) (668,437). */
 .screen-home {
-    top: 28%;
-    left: 31%;
-    width: 10.5%;
-    height: 38%;
+    left: 31.7383%;
+    top: 10.6934cqw;
+    width: 9.0332%;
+    height: 10.6445cqw;
+    clip-path: polygon(0% 5.50%, 94.59% 0%, 100% 91.28%, 9.73% 100%);
 }
 
+/* Streamers: (425,390) (576,361) (606,515) (452,545). */
 .screen-streamers {
-    top: 54%;
-    left: 20%;
-    width: 8%;
-    height: 30%;
+    left: 20.7520%;
+    top: 17.6270cqw;
+    width: 8.8379%;
+    height: 8.9844cqw;
+    clip-path: polygon(0% 15.76%, 83.43% 0%, 100% 83.70%, 14.92% 100%);
 }
 
+/* FAQ: (1224,141) (1472,117) (1481,364) (1223,346). */
 .screen-faq {
-    top: 14%;
-    left: 62%;
-    width: 13.5%;
-    height: 37%;
+    left: 59.7168%;
+    top: 5.7129cqw;
+    width: 12.5977%;
+    height: 12.0605cqw;
+    clip-path: polygon(0.39% 9.72%, 96.51% 0%, 100% 100%, 0% 92.71%);
 }
 
+/* Contact: (1292,331) (1434,348) (1411,480) (1280,449).
+   The Contact screen overlaps the FAQ display in the artwork. Because
+   its anchor comes later in the HTML, Contact wins in that overlap. */
 .screen-contact {
-    top: 47%;
-    left: 65%;
-    width: 7%;
-    height: 24%;
+    left: 62.5%;
+    top: 16.1621cqw;
+    width: 7.5195%;
+    height: 7.2754cqw;
+    clip-path: polygon(7.79% 0%, 100% 11.41%, 85.06% 100%, 0% 79.19%);
 }
-
 
 .mobile-nav {
     display: none;
