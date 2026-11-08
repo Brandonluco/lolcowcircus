@@ -69,12 +69,13 @@ body {
     opacity: .13;
     filter: blur(.20cqw);
     background: radial-gradient(circle, var(--glow-core) 0%, var(--glow-edge) 35%, transparent 75%);
-    animation: christmas-bulb-twinkle 5.4s ease-in-out var(--delay) infinite alternate;
+    animation: christmas-bulb-alternate-red 6s ease-in-out infinite;
 }
 
 .christmas-light-glow.gold {
     --glow-core: rgba(255, 211, 106, .9);
     --glow-edge: rgba(255, 172, 38, .30);
+    animation-name: christmas-bulb-alternate-gold;
 }
 
 .christmas-light-glow.red {
@@ -82,10 +83,16 @@ body {
     --glow-edge: rgba(225, 32, 29, .27);
 }
 
-@keyframes christmas-bulb-twinkle {
-    0%, 17% { opacity: .10; }
-    50% { opacity: .27; }
-    83%, 100% { opacity: .15; }
+/* Red and gold trade the existing soft glow over one six-second loop.
+   Long gradual fades avoid flashing, and only opacity animates. */
+@keyframes christmas-bulb-alternate-red {
+    0%, 10%, 90%, 100% { opacity: .27; }
+    45%, 55% { opacity: .06; }
+}
+
+@keyframes christmas-bulb-alternate-gold {
+    0%, 10%, 90%, 100% { opacity: .06; }
+    45%, 55% { opacity: .27; }
 }
 
 @media (prefers-reduced-motion: reduce) {
