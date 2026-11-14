@@ -2361,6 +2361,88 @@ export default {
     }
 
     // =====================
+    // ADMIN: FEATURED-STREAMER PIN
+    // =====================
+    // Same flag the admin panel's "Feature This Streamer" / "Remove Feature
+    // Pin" buttons flip, on its own narrow path so it can be added to the
+    // Cloudflare Access application for the beanoh-admin service token
+    // without exposing the public roster. Only flips featured_pinned —
+    // nothing is ever deleted, and the old PUT /api/streamers branch is
+    // untouched.
+    //   PUT { id, pinned: true }   -> that streamer is the one pin
+    //   PUT { id, pinned: false }  -> clears their pin (no-op if not pinned)
+    // Replies { success, pinnedId } where pinnedId is whoever holds the pin
+    // afterwards (or null), so the caller can verify without another read.
+    if (url.pathname === "/api/admin/streamers/featured-pin") {
+
+      const authError = await requireAdmin(request, env);
+      if (authError) return authError;
+
+      if (request.method !== "PUT") {
+        return Response.json({ error: "method_not_allowed" }, {
+          status: 405,
+          headers: { Allow: "PUT" }
+        });
+      }
+
+      let data;
+      try {
+        data = await request.json();
+      } catch {
+        return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+      }
+
+      const pinId = Number(data && data.id);
+
+      if (!data || !Number.isInteger(pinId) || pinId <= 0 || typeof data.pinned !== "boolean") {
+        return Response.json({
+          error: "Need a streamer id (a whole number) and pinned set to true or false."
+        }, { status: 400 });
+      }
+
+      // Validate before touching anything, so a bad id can never clear
+      // the current pin.
+      const target = await env.DB
+        .prepare("SELECT id FROM streamers WHERE id = ?")
+        .bind(pinId)
+        .first();
+
+      if (!target) {
+        return Response.json({
+          error: "No streamer with that id.",
+          id: pinId
+        }, { status: 404 });
+      }
+
+      if (data.pinned) {
+
+        // One batch = one transaction: clear everyone else, pin this one.
+        await env.DB.batch([
+          env.DB.prepare("UPDATE streamers SET featured_pinned = 0 WHERE featured_pinned != 0 AND id != ?").bind(pinId),
+          env.DB.prepare("UPDATE streamers SET featured_pinned = 1 WHERE id = ?").bind(pinId)
+        ]);
+
+      } else {
+
+        await env.DB
+          .prepare("UPDATE streamers SET featured_pinned = 0 WHERE id = ? AND featured_pinned != 0")
+          .bind(pinId)
+          .run();
+
+      }
+
+      const current = await env.DB
+        .prepare("SELECT id FROM streamers WHERE featured_pinned = 1 LIMIT 1")
+        .first();
+
+      return Response.json({
+        success: true,
+        pinnedId: current ? current.id : null
+      });
+
+    }
+
+    // =====================
     // STREAMERS API
     // =====================
 
