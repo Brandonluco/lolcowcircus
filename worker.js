@@ -1808,7 +1808,8 @@ export default {
     const ADMIN_WRITE_ALIASES = new Map([
       ["/api/admin/alert", "/api/alert"],
       ["/api/admin/creator-of-the-week", "/api/creator-of-the-week"],
-      ["/api/admin/featured-videos", "/api/featured-videos"]
+      ["/api/admin/featured-videos", "/api/featured-videos"],
+      ["/api/admin/song-of-the-week", "/api/song-of-the-week"]
     ]);
 
     const isAdminFeaturedVideoById = url.pathname.startsWith("/api/admin/featured-videos/");
@@ -1822,6 +1823,15 @@ export default {
         return Response.json({ error: "method_not_allowed" }, {
           status: 405,
           headers: { Allow: "POST, DELETE" }
+        });
+      }
+
+      // Beanoh can set a weekly song, but must not delete it. Preserve
+      // the admin panel's existing direct POST/DELETE routes unchanged.
+      if (url.pathname === "/api/admin/song-of-the-week" && request.method !== "POST") {
+        return Response.json({ error: "method_not_allowed" }, {
+          status: 405,
+          headers: { Allow: "POST" }
         });
       }
 
@@ -1960,7 +1970,7 @@ export default {
 
         const data = await request.json();
 
-        const trackId = extractSpotifyTrackId(data.trackId);
+        const trackId = extractSpotifyTrackId(data?.track_id ?? data?.trackId);
 
         if (!trackId) {
           return Response.json({
@@ -1970,18 +1980,17 @@ export default {
           });
         }
 
-        await env.DB
+        const result = await env.DB
           .prepare(
             "INSERT INTO song_of_the_week (track_id) VALUES (?)"
           )
-          .bind(
-            trackId
-          )
+          .bind(trackId)
           .run();
-
 
         return Response.json({
           success: true,
+          id: result.meta.last_row_id,
+          track_id: trackId,
           trackId: trackId
         });
 
